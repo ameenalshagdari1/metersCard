@@ -51,12 +51,13 @@ window.STANDALONE=true;
 (function(){
  if(!window.firebase||String(FIREBASE_CONFIG.apiKey).startsWith('PASTE')){window.claude={use:async()=>null};window.__cfgMissing=true;return}
  firebase.initializeApp(FIREBASE_CONFIG);const auth=firebase.auth(),fs=firebase.firestore();
- const ready=new Promise((res,rej)=>{const un=auth.onAuthStateChanged(u=>{if(!u){auth.signInAnonymously().catch(rej);return}un();res(u)})});
- const user={id:async()=>(await ready).uid,me:async()=>({name:(await ready).email||''}),isOwner:async()=>{const u=await ready;return!u.isAnonymous&&!!u.email&&OWNER_EMAILS.map(e=>e.trim().toLowerCase()).includes(u.email.toLowerCase())}};
+ const ready=auth.setPersistence(firebase.auth.Auth.Persistence.SESSION).catch(()=>{}).then(()=>new Promise((res,rej)=>{const un=auth.onAuthStateChanged(u=>{if(!u){auth.signInAnonymously().catch(rej);return}un();res(u)})}));
+ const user={id:async()=>(await ready).uid,me:async()=>({name:(await ready).email||''}),isOwner:async()=>{const u=await ready;return!u.isAnonymous&&!!u.email&&[].concat(typeof OWNER_EMAILS!=='undefined'?OWNER_EMAILS:[],typeof OWNER_EMAIL!=='undefined'?OWNER_EMAIL:[]).map(e=>String(e).trim().toLowerCase()).includes(u.email.toLowerCase())}};
  const downloads={save:async({filename,data})=>{const b=data instanceof Blob?data:new Blob([data]);const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}};
  window.claude={use:async n=>n==='db'?fs:n==='user'?(await ready,user):n==='downloads'?downloads:null};
- window.__ownerLogin=async(e,pw)=>{await auth.signInWithEmailAndPassword(e.trim(),pw);location.reload()};
- window.__signOut=async()=>{await auth.signOut();location.reload()};
+ window.__ownerLogin=async(e,pw)=>{await auth.signInWithEmailAndPassword(e.trim(),pw);try{sessionStorage.setItem('mr:in','1')}catch(_){}location.reload()};
+ window.__isAnon=async()=>(await ready).isAnonymous;
+ window.__signOut=async()=>{try{sessionStorage.removeItem('mr:in')}catch(_){}await auth.signOut();location.reload()};
 })();</script>
 <script>
 const $=s=>document.querySelector(s),app=$('#app');
@@ -102,6 +103,8 @@ async function boot(){
  try{[db,user]=await Promise.all([claude.use('db'),claude.use('user')])}catch(e){}
  if(!db||!user){app.innerHTML=`<p class="note">${window.__cfgMissing?'Setup needed: paste your Firebase config and owner email at the top of index.html.':'Could not connect. Check your internet connection and reload.'}</p>`;return}
  AUID=await user.id();uid=AUID;
+ let inS=false;try{inS=!!sessionStorage.getItem('mr:in')}catch(_){}
+ if(!inS){if(!(await window.__isAnon()))return window.__signOut();return gate()}
  const m=await db.doc('data/users/'+AUID+'/me').get();
  if(m.exists){const x=m.data();
   if(x.role==='owner'&&await user.isOwner()){ME=x;return start()}
@@ -114,13 +117,13 @@ async function boot(){
 const stableId=x=>x.role==='worker'?'w_'+x.wid:x.role==='business'?'b_'+x.h:AUID;
 async function claim(email,code){
  email=email.trim().toLowerCase();const h=await accH(email,code),a=await db.doc('access/'+h).get();if(!a.exists)return false;
- const c=await db.doc('claims/'+h).get();if(c.exists&&(c.data().uid!==AUID||c.data().dev!==DEV))return 'taken';
+ const c=await db.doc('claims/'+h).get();if(c.exists&&c.data().dev!==DEV)return 'taken';
  await db.doc('claims/'+h).set({uid:AUID,dev:DEV});
  const x=a.data(),kk=await kdf(code,email);let me;
  if(x.role==='worker'){const w=await dec(kk,x.wrap);me={tid:x.tid,role:'worker',wid:x.wid,h,email,K:w.k,C:w.c}}
  else{let K;if(x.bwrap)K=(await dec(kk,x.bwrap)).k;else{K=b64(crypto.getRandomValues(new Uint8Array(32)));await db.doc('access/'+h).update({bwrap:await enc(kk,{k:K})})}
   me={tid:'b_'+h,role:'business',h,email,K}}
- await db.doc('data/users/'+AUID+'/me').set(me);ME=me;uid=stableId(me);MYK=null;NAMES=null;start();return true;
+ await db.doc('data/users/'+AUID+'/me').set(me);try{sessionStorage.setItem('mr:in','1')}catch(_){}ME=me;uid=stableId(me);MYK=null;NAMES=null;start();return true;
 }
 async function codeSignOut(){if(window.__flush)await window.__flush();try{if(ME&&ME.h)await db.doc('claims/'+ME.h).delete();await db.doc('data/users/'+AUID+'/me').delete()}catch(e){}window.__signOut()}
 function gate(m){
@@ -362,5 +365,5 @@ function accessView(kind){
   await db.doc('t/'+ME.tid+'/prices/'+id).set({enc:await enc(await derive(kt,'w:'+id),{price:v===''?null:v})})};
  list();
 }
-boot();
+boot().catch(e=>{app.innerHTML='<p class="note flag">Error: '+esc(e&&(e.message||e.code)||e)+'</p>'});
 </script></body></html>
