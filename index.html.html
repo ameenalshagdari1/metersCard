@@ -39,21 +39,24 @@ h3.sec{font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacin
 .ppl{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:6px 0;border-top:1px solid var(--line)}code{background:var(--tot);color:var(--accent);padding:2px 6px;border-radius:6px;font-size:14px;letter-spacing:.05em}
 .dl{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}.dlh{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:0 12px 6px}
 </style></head><body><main id="app"><p class="note">…</p></main>
-<script>window.STANDALONE=true;
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ======== SETUP: paste your Firebase web config and the owner's email ======== */
+const FIREBASE_CONFIG={apiKey:"AIzaSyB8vcW381gn9Mw71fVuUWvMS_cm1t0xu2w",authDomain:"meter-app-8ec7d.firebaseapp.com",projectId:"meter-app-8ec7d",storageBucket:"meter-app-8ec7d.firebasestorage.app",messagingSenderId:"454834887799",appId:"1:454834887799:web:8296986c43cb7cb7d07a72"};
+const OWNER_EMAIL="ameenalshagdari1@gmail.com";
+/* ============================================================================ */
+window.STANDALONE=true;
 (function(){
- const mem={};let ok=true;try{localStorage.setItem('mr:t','1');localStorage.removeItem('mr:t')}catch(e){ok=false}
- const P='mrdb:',get=k=>ok?localStorage.getItem(P+k):(mem[k]??null),set=(k,v)=>ok?localStorage.setItem(P+k,v):(mem[k]=v),del=k=>ok?localStorage.removeItem(P+k):delete mem[k],keys=()=>ok?Object.keys(localStorage).filter(k=>k.startsWith(P)).map(k=>k.slice(P.length)):Object.keys(mem);
- const snap=(p,id)=>{const v=get(p);return{id,exists:v!==null,data:()=>v===null?undefined:JSON.parse(v)}};
- const doc=p=>({id:p.split('/').pop(),get:async()=>snap(p,p.split('/').pop()),set:async v=>{set(p,JSON.stringify(v))},delete:async()=>{del(p)}});
- const col=(p,f=[])=>({doc:id=>doc(p+'/'+(id||Math.random().toString(36).slice(2,12))),where:(fl,op,v)=>col(p,f.concat([[fl,op,v]])),get:async()=>{const pre=p+'/',ids=keys().filter(k=>k.startsWith(pre)&&!k.slice(pre.length).includes('/')).map(k=>k.slice(pre.length));
-  return{docs:ids.map(i=>({id:i,d:JSON.parse(get(pre+i))})).filter(x=>f.every(([fl,op,v])=>x.d[fl]===v)).map(x=>({id:x.id,data:()=>x.d}))}}});
- const KU='mrlocal:u',U=()=>{try{return localStorage.getItem(KU)||'owner'}catch(e){return'owner'}};
- window.__switchUser=id=>{try{localStorage.setItem(KU,id||'owner')}catch(e){}location.reload()};
- window.__newGuest=()=>window.__switchUser('guest-'+Math.random().toString(36).slice(2,8));
- window.__guests=()=>keys().filter(k=>/^data\/users\/guest-[^/]+\/me$/.test(k)).map(k=>{let v={};try{v=JSON.parse(get(k))}catch(e){}return{id:k.split('/')[2],email:v.email||'',role:v.role||''}});
- const db={doc,collection:col},user={id:async()=>U(),me:async()=>({name:U()==='owner'?'Owner':'Guest'}),isOwner:async()=>U()==='owner'};
+ if(!window.firebase||String(FIREBASE_CONFIG.apiKey).startsWith('PASTE')){window.claude={use:async()=>null};window.__cfgMissing=true;return}
+ firebase.initializeApp(FIREBASE_CONFIG);const auth=firebase.auth(),fs=firebase.firestore();
+ const ready=new Promise((res,rej)=>{const un=auth.onAuthStateChanged(u=>{if(!u){auth.signInAnonymously().catch(rej);return}un();res(u)})});
+ const user={id:async()=>(await ready).uid,me:async()=>({name:(await ready).email||''}),isOwner:async()=>{const u=await ready;return!u.isAnonymous&&!!u.email&&u.email.toLowerCase()===OWNER_EMAIL.trim().toLowerCase()}};
  const downloads={save:async({filename,data})=>{const b=data instanceof Blob?data:new Blob([data]);const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}};
- window.claude={use:async n=>n==='db'?db:n==='user'?user:n==='downloads'?downloads:null};
+ window.claude={use:async n=>n==='db'?fs:n==='user'?(await ready,user):n==='downloads'?downloads:null};
+ window.__ownerLogin=async(e,pw)=>{await auth.signInWithEmailAndPassword(e.trim(),pw);location.reload()};
+ window.__signOut=async()=>{await auth.signOut();location.reload()};
 })();</script>
 <script>
 const $=s=>document.querySelector(s),app=$('#app');
@@ -97,7 +100,7 @@ async function myKey(){return MYK||(MYK=ME.role==='worker'?unb(ME.K):await deriv
 async function boot(){
  applyLang();
  try{[db,user]=await Promise.all([claude.use('db'),claude.use('user')])}catch(e){}
- if(!db||!user){app.innerHTML=`<p class="note">${t('sign')}</p>`;return}
+ if(!db||!user){app.innerHTML=`<p class="note">${window.__cfgMissing?'Setup needed: paste your Firebase config and owner email at the top of index.html.':'Could not connect. Check your internet connection and reload.'}</p>`;return}
  uid=await user.id();
  const m=await db.doc('data/users/'+uid+'/me').get();
  if(m.exists){const x=m.data();
@@ -117,10 +120,10 @@ async function claim(email,code){
  await db.doc('claims/'+h).set({uid,dev:DEV});await db.doc('data/users/'+uid+'/me').set(me);ME=me;MYK=null;NAMES=null;start();return true;
 }
 function gate(m){
- app.innerHTML=`<div class="hero"><div class="ttl"><h1>${t('title')}</h1><p>${t('gsub')}</p></div><div class="mh"><button class="ib" id="lb">🌐</button><div class="menu" id="lm" hidden></div></div></div><div class="card"><label>${t('lemail')}</label><input id="ge" type="email" autocomplete="email"><label>${t('lcode')}</label><input id="gc" autocomplete="off" style="letter-spacing:.1em"><div class="acts"><button class="p" id="go">${t('go')}</button></div><p class="note flag" id="gm">${esc(m||'')}</p>${window.STANDALONE?'<p class="note"><a href="#" id="bo">Back to owner (local test)</a></p>':''}</div>`;
+ app.innerHTML=`<div class="hero"><div class="ttl"><h1>${t('title')}</h1><p>${t('gsub')}</p></div><div class="mh"><button class="ib" id="lb">🌐</button><div class="menu" id="lm" hidden></div></div></div><div class="card"><label>${t('lemail')}</label><input id="ge" type="email" autocomplete="email"><label>${t('lcode')}</label><input id="gc" autocomplete="off" style="letter-spacing:.1em"><div class="acts"><button class="p" id="go">${t('go')}</button></div><p class="note flag" id="gm">${esc(m||'')}</p><p class="note"><a href="#" id="bo">Owner sign-in</a></p><div id="ol" hidden><label>Owner email</label><input id="oe" type="email" autocomplete="username"><label>Password</label><input id="op" type="password" autocomplete="current-password"><div class="acts"><button class="p" id="og">Sign in</button></div><p class="note flag" id="om"></p></div></div>`;
  langMenu(()=>gate(m));
  const go=async()=>{$('#gm').textContent='';try{const r=await claim($('#ge').value,$('#gc').value);if(r===false)$('#gm').textContent=t('bad');else if(r==='taken')$('#gm').textContent=t('taken')}catch(e){$('#gm').textContent=t('bad')}};
- if($('#bo'))$('#bo').onclick=e=>{e.preventDefault();window.__switchUser('owner')};$('#go').onclick=go;$('#gc').onkeydown=e=>{if(e.key==='Enter')go()};
+ $('#bo').onclick=e=>{e.preventDefault();$('#ol').hidden=!$('#ol').hidden};const og=async()=>{$('#om').textContent='';try{await window.__ownerLogin($('#oe').value,$('#op').value)}catch(er){$('#om').textContent='Wrong email or password.'}};$('#og').onclick=og;$('#op').onkeydown=e=>{if(e.key==='Enter')og()};$('#go').onclick=go;$('#gc').onkeydown=e=>{if(e.key==='Enter')go()};
 }
 function langMenu(after){
  const lm=$('#lm'),lb=$('#lb');lm.innerHTML=LANGS.map(([c,n])=>`<button class="li${c===LANG?' on':''}" data-l="${c}">${n}</button>`).join('');
@@ -137,10 +140,10 @@ function shell(){
  const items=[['home','🏠','home'],['records','📊','records'],['export','⬇️','exportN']].concat(TO()?[['games','🎟️','gamesN'],['access','👥','access']]:[],ME.role==='owner'?[['biz','🏢','bizN']]:[]);
  const role=ME.role==='owner'?t('owner'):ME.role==='business'?t('biz')+' · '+esc(ME.email):esc(ME.email);
  app.innerHTML=`<div class="hero"><button class="ib" id="hb" aria-label="${t('menu')}">☰</button><div class="ttl"><h1>${t('title')}</h1><p>${role}</p></div></div>
- <div class="ov" id="ov" hidden></div><nav class="drawer" id="dr" hidden><div class="dh"><b>${t('title')}</b><span>${role}</span></div>${items.map(([v,i,k])=>`<button class="ni" data-v="${v}"><span>${i}</span>${t(k)}</button>`).join('')}<div class="dl"><button class="ni" data-lt="1"><span>🌐</span>${t('lang')} · ${LANGS.find(l=>l[0]===LANG)[1]}<span style="margin-inline-start:auto" id="lch">▾</span></button><div id="ll" hidden style="padding-inline-start:12px">${LANGS.map(([c,n])=>`<button class="ni${c===LANG?' on':''}" data-l="${c}">${n}</button>`).join('')}</div></div>${window.STANDALONE?`<div class="dl"><div class="dlh">Local test mode</div>${ME.role==='owner'?`<button class="ni" data-sw="__new"><span>➕</span>Test as a new user</button>`+window.__guests().map(g=>`<button class="ni" data-sw="${esc(g.id)}"><span>👤</span>${esc(g.email||g.id)}</button>`).join(''):`<button class="ni" data-sw="owner"><span>↩</span>Back to owner</button>`}<p class="note" style="padding:0 12px">Everything stays in this browser. Use it to preview every window and test invites.</p></div>`:''}</nav><div id="page"></div>`;
+ <div class="ov" id="ov" hidden></div><nav class="drawer" id="dr" hidden><div class="dh"><b>${t('title')}</b><span>${role}</span></div>${items.map(([v,i,k])=>`<button class="ni" data-v="${v}"><span>${i}</span>${t(k)}</button>`).join('')}<div class="dl"><button class="ni" data-lt="1"><span>🌐</span>${t('lang')} · ${LANGS.find(l=>l[0]===LANG)[1]}<span style="margin-inline-start:auto" id="lch">▾</span></button><div id="ll" hidden style="padding-inline-start:12px">${LANGS.map(([c,n])=>`<button class="ni${c===LANG?' on':''}" data-l="${c}">${n}</button>`).join('')}</div></div>${ME.role==='owner'?`<div class="dl"><button class="ni" data-so="1"><span>🚪</span>Sign out</button></div>`:''}</nav><div id="page"></div>`;
  const dr=$('#dr'),ov=$('#ov'),close=()=>{dr.hidden=ov.hidden=true};
  $('#hb').onclick=()=>{dr.hidden=ov.hidden=false;dr.querySelectorAll('.ni').forEach(b=>b.classList.toggle('on',b.dataset.v===view))};
- ov.onclick=close;dr.onclick=async e=>{const b=e.target.closest('.ni');if(!b)return;if(b.dataset.sw){const v=b.dataset.sw;if(v==='__new')window.__newGuest();else window.__switchUser(v);return}if(b.dataset.lt){const l=$('#ll');l.hidden=!l.hidden;$('#lch').textContent=l.hidden?'▾':'▴';return}if(window.__flush)await window.__flush();if(b.dataset.l){LANG=b.dataset.l;try{localStorage.setItem('mr:lang',LANG)}catch(_){}applyLang();shell();renderView();return}view=b.dataset.v;close();renderView()};
+ ov.onclick=close;dr.onclick=async e=>{const b=e.target.closest('.ni');if(!b)return;if(b.dataset.so){if(window.__flush)await window.__flush();window.__signOut();return}if(b.dataset.lt){const l=$('#ll');l.hidden=!l.hidden;$('#lch').textContent=l.hidden?'▾':'▴';return}if(window.__flush)await window.__flush();if(b.dataset.l){LANG=b.dataset.l;try{localStorage.setItem('mr:lang',LANG)}catch(_){}applyLang();shell();renderView();return}view=b.dataset.v;close();renderView()};
  
 }
 function renderView(){({home,records,games:gamesView,export:exportView,access:()=>accessView('worker'),biz:()=>accessView('business')})[view]()}
@@ -168,12 +171,13 @@ function showWarn(rows,cap){
   const top=Object.keys(pc).sort((a,b)=>pc[b]-pc[a])[0];if(pc[top]>=ok.length*0.6)ok.forEach(x=>{if(x.p!==top)w.push(t('wPrice').replace('{a}',x.i+1))})}
  el.innerHTML=w.slice(0,6).map(x=>'⚠ '+esc(x)).join('<br>')}
 async function prevDay(date){const sn=await db.collection('t/'+ME.tid+'/days').where('u','==',uid).get();let best=null;sn.docs.forEach(d=>{const x=d.data();if(x.d<date&&(!best||x.d>best.d))best=x});if(!best)return null;try{return{d:best.d,...await dec(await myKey(),best.enc)}}catch(e){return null}}
-const nr=()=>({g:'',n:'',c:'',p:'',b:'',e:''});
+const GAME='game';
+const nr=()=>({g:'',n:GAME,c:'',p:'',b:'',e:''});
 function home(){
  let date=ymd(new Date()),rows=[],cap=50,cash={c:'',p:'',x:''},tm=null,ready=false,prev=[],last={};
  $('#page').innerHTML=`<div class="card"><div class="row"><div><label>${t('date')}</label><input type="date" id="dt"></div><div><label>${t('cap')}</label><input id="cap" inputmode="decimal"></div>
  <div class="kpi kr"><span>${t('rev')}</span><b id="kr">0</b></div><div class="kpi kv"><span>${t('vol')}</span><b id="kv">0</b></div></div>
- <div class="wrap" style="margin-top:10px"><table><thead><tr><th>#</th><th>${t('game')}</th><th>${t('price')}</th><th>${t('begin')}</th><th>${t('end')}</th><th class="n">${t('rev')}</th><th class="n">${t('vol')}</th><th></th><th></th></tr></thead><tbody id="rs"></tbody></table></div>
+ <div class="wrap" style="margin-top:10px"><table><thead><tr><th>${t('game')}</th><th>${t('price')}</th><th>${t('begin')}</th><th>${t('end')}</th><th class="n">${t('rev')}</th><th class="n">${t('vol')}</th><th></th><th></th></tr></thead><tbody id="rs"></tbody></table></div>
  <div class="acts"><button class="p" id="cpy">📋 ${t('copyY')}</button><button id="add">${t('add')}</button><button id="add10">${t('add10')}</button><span class="note" id="st"></span></div><p class="note">${t('rule')}</p></div>
  <div class="card"><h3 class="sec" style="margin-top:0">${t('cashH')}</h3><div class="row"><div><label>${t('cCount')}</label><input id="cc1" inputmode="decimal"></div><div><label>${t('cPrize')}</label><input id="cc2" inputmode="decimal"></div><div><label>${t('cExch')}</label><input id="cc3" inputmode="decimal"></div></div>
  <div class="row" style="margin-top:10px"><div class="kpi" style="background:var(--tot);color:var(--accent)"><span>${t('expct')}</span><b id="ce">0</b><small id="cs"></small></div><div class="kpi" id="cov"><span>${t('overS')}</span><b id="co">—</b></div></div></div>`;
@@ -189,12 +193,12 @@ function home(){
   else{rows=[nr()];cap=50;cash={c:'',p:'',x:''}}
   $('#cap').value=cap;$('#cc1').value=cash.c;$('#cc2').value=cash.p;$('#cc3').value=cash.x;build();prev=keep0().map(r=>({p:r.p,b:r.b,e:r.e}));ready=true;
   $('#st').textContent=p?t('loaded'):t('newDay')}
- function build(){const tb=$('#rs');tb.innerHTML='';rows.forEach((r,i)=>{const tr=document.createElement('tr');
-  tr.innerHTML=`<td>${i+1}</td><td><select data-i="${i}" data-k="g">${gopts(r.g)}</select></td>`+['p','b','e'].map(k=>`<td><input data-i="${i}" data-k="${k}" inputmode="decimal" value="${esc(r[k])}"></td>`).join('')+`<td class="n"></td><td class="n"></td><td class="flag"></td><td><button class="x" data-d="${i}">✕</button></td>`;tb.appendChild(tr)});
-  const tr=document.createElement('tr');tr.className='t';tr.innerHTML=`<td></td><td colspan="4">${t('total')}</td><td class="n" id="tr"></td><td class="n" id="tv"></td><td></td><td></td>`;tb.appendChild(tr);upd()}
+ function build(){const tb=$('#rs');tb.innerHTML='';rows.forEach((r,i)=>{r.n=String(i+1);const tr=document.createElement('tr');
+  tr.innerHTML=`<td>${i+1}</td>`+['p','b','e'].map(k=>`<td><input data-i="${i}" data-k="${k}" inputmode="decimal" value="${esc(r[k])}"></td>`).join('')+`<td class="n"></td><td class="n"></td><td class="flag"></td><td><button class="x" data-d="${i}">✕</button></td>`;tb.appendChild(tr)});
+  const tr=document.createElement('tr');tr.className='t';tr.innerHTML=`<td></td><td colspan="3">${t('total')}</td><td class="n" id="tr"></td><td class="n" id="tv"></td><td></td><td></td>`;tb.appendChild(tr);upd()}
  function upd(){let c0=num($('#cap').value);if(!(c0>0))c0=50;cap=c0;let R=0,V=0;const trs=$('#rs').querySelectorAll('tr:not(.t)');
   rows.forEach((r,i)=>{const x=calc(r,c0),tr=trs[i],ins=tr.querySelectorAll('input'),td=tr.querySelectorAll('td');R+=x.rev;V+=x.vol;
-   ins[0].classList.toggle('bad',x.pb);ins[1].classList.toggle('bad',x.bb);ins[2].classList.toggle('bad',x.eb);td[5].textContent=fmt(x.rev);td[6].textContent=fmt(x.vol);td[7].textContent=x.flag==='size'?t('needSize'):(x.bb||x.eb)?t('range').replace('{n}',num(r.c)>0?num(r.c):c0):x.flag});
+   ins[0].classList.toggle('bad',x.pb);ins[1].classList.toggle('bad',x.bb);ins[2].classList.toggle('bad',x.eb);td[4].textContent=fmt(x.rev);td[5].textContent=fmt(x.vol);td[6].textContent=x.flag==='size'?t('needSize'):(x.bb||x.eb)?t('range').replace('{n}',num(r.c)>0?num(r.c):c0):x.flag});
   $('#tr').textContent=$('#kr').textContent=fmt(R);$('#tv').textContent=$('#kv').textContent=fmt(V);showWarn(rows,c0);
   const pz=num(cash.p)||0,xc=num(cash.x)||0,k=num(cash.c),ex=R-pz-xc;$('#ce').textContent=fmt(ex);$('#cs').textContent=t('sales')+' '+fmt(R);
   if(blank(cash.c)||isNaN(k)){$('#co').textContent='—';$('#cov').className='kpi'}else{const o=k-ex;$('#co').textContent=(o>0?'+':'')+fmt(o);$('#cov').className='kpi '+(Math.abs(o)>(CAT.tol??5)?'kv':'kr')}}
@@ -208,12 +212,12 @@ function home(){
  async function copyPrev(){
   let pv=null;try{pv=await prevDay(date)}catch(e){}
   if(!pv||!pv.rows.length){$('#st').textContent=t('noPrev');return}
-  const key=r=>(r.g||'c'+r.p)+'|'+String(r.b).trim(),have=new Set(rows.filter(r=>!blank(r.b)).map(key));
-  const nrw=pv.rows.map(r=>({...cp(r),b:blank(r.e)?String(r.b??''):String(r.e),e:''})).filter(r=>!have.has(key(r)));
+  const key=r=>'c'+r.p+'|'+String(r.b).trim(),have=new Set(rows.filter(r=>!blank(r.b)).map(key));
+  const nrw=pv.rows.map(r=>({...cp(r),g:'',n:GAME,c:'',b:blank(r.e)?String(r.b??''):String(r.e),e:''})).filter(r=>!have.has(key(r)));
   if(!nrw.length){$('#st').textContent=t('already');return}
   const empty=rows.every(r=>blank(r.b)&&blank(r.e));rows=empty?nrw:rows.concat(nrw);build();changed();$('#st').textContent=t('copiedFrom')+' '+pv.d}
  $('#cpy').onclick=copyPrev;
- $('#rs').oninput=e=>{const d=e.target.dataset;if(d.k&&d.k!=='g'){rows[d.i][d.k]=e.target.value;changed()}};
+ $('#rs').oninput=e=>{const d=e.target.dataset;if(d.k&&d.k!=='g'&&d.k!=='n'){rows[d.i][d.k]=e.target.value;changed()}};
  $('#rs').onchange=e=>{const d=e.target.dataset;if(d.k==='g'){const r=rows[d.i],g=CAT.games.find(x=>x.id===e.target.value);r.g=e.target.value;if(g){r.n=g.name;r.c=g.size;r.p=String(g.price);if(blank(r.b)&&last[g.id]!==undefined)r.b=String(last[g.id])}else{r.n='';r.c=''}build();changed()}};
  $('#rs').onclick=e=>{const d=e.target.dataset.d;if(d!==undefined){rows.splice(d,1);if(!rows.length)rows.push(nr());build();changed()}};
  [['cc1','c'],['cc2','p'],['cc3','x']].forEach(([i,k])=>$('#'+i).oninput=e=>{cash[k]=e.target.value;changed()});
@@ -348,7 +352,7 @@ function accessView(kind){
   }catch(e){st.textContent=e.message||e.code}};
  $('#pl').onclick=async e=>{const id=e.target.dataset.r;if(!id)return;const bt=e.target;
   if(bt.dataset.c!=='1'){bt.dataset.c='1';bt.textContent=t('sure');setTimeout(()=>{bt.dataset.c='';bt.textContent=t('revoke')},4000);return}
-  try{const h=bt.dataset.h;for(const p of ['access/'+h,'claims/'+h,'t/'+ME.tid+'/prices/'+id])await db.doc(p).delete().catch(()=>{});await db.doc('t/'+ME.tid+'/people/'+id).delete();NAMES=null;$('#as').textContent=t('revoked')}catch(er){$('#as').textContent=er.message||er.code}list()};
+  try{const h=bt.dataset.h;for(const p of ['claims/'+h,'access/'+h,'t/'+ME.tid+'/prices/'+id])await db.doc(p).delete().catch(()=>{});await db.doc('t/'+ME.tid+'/people/'+id).delete();NAMES=null;$('#as').textContent=t('revoked')}catch(er){$('#as').textContent=er.message||er.code}list()};
  $('#pl').onchange=async e=>{const id=e.target.dataset.p;if(!id)return;const kt=KT(),pk=await derive(kt,'people'),d=await db.doc('t/'+ME.tid+'/people/'+id).get();if(!d.exists)return;
   const p=await dec(pk,d.data().enc),v=e.target.value.trim()===''?'':num(e.target.value);p.price=v;await db.doc('t/'+ME.tid+'/people/'+id).set({enc:await enc(pk,p)});
   await db.doc('t/'+ME.tid+'/prices/'+id).set({enc:await enc(await derive(kt,'w:'+id),{price:v===''?null:v})})};
