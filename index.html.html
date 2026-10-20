@@ -55,8 +55,9 @@ window.STANDALONE=true;
  const user={id:async()=>(await ready).uid,me:async()=>({name:(await ready).email||''}),isOwner:async()=>{const u=await ready;return!u.isAnonymous&&!!u.email&&[].concat(typeof OWNER_EMAILS!=='undefined'?OWNER_EMAILS:[],typeof OWNER_EMAIL!=='undefined'?OWNER_EMAIL:[]).map(e=>String(e).trim().toLowerCase()).includes(u.email.toLowerCase())}};
  const downloads={save:async({filename,data})=>{const b=data instanceof Blob?data:new Blob([data]);const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}};
  window.claude={use:async n=>n==='db'?fs:n==='user'?(await ready,user):n==='downloads'?downloads:null};
- window.__ownerLogin=async(e,pw)=>{await auth.signInWithEmailAndPassword(e.trim(),pw);try{sessionStorage.setItem('mr:in','1')}catch(_){}location.reload()};
+ window.__ownerLogin=async(e,pw)=>{await auth.signInWithEmailAndPassword(e.trim(),pw);try{sessionStorage.setItem('mr:in','1');sessionStorage.setItem('mr:at',String(Date.now()))}catch(_){}location.reload()};
  window.__isAnon=async()=>(await ready).isAnonymous;
+ window.__ts=()=>firebase.firestore.FieldValue.serverTimestamp();
  window.__signOut=async()=>{try{sessionStorage.removeItem('mr:in')}catch(_){}await auth.signOut();location.reload()};
 })();</script>
 <script>
@@ -104,7 +105,7 @@ async function boot(){
  if(!db||!user){app.innerHTML=`<p class="note">${window.__cfgMissing?'Setup needed: paste your Firebase config and owner email at the top of index.html.':'Could not connect. Check your internet connection and reload.'}</p>`;return}
  AUID=await user.id();uid=AUID;
  let inS=false;try{inS=!!sessionStorage.getItem('mr:in')}catch(_){}
- if(!inS){if(!(await window.__isAnon()))return window.__signOut();return gate()}
+ if(!inS||expired()){if(!(await window.__isAnon()))return window.__signOut();try{sessionStorage.removeItem('mr:in')}catch(_){}return gate()}
  const m=await db.doc('data/users/'+AUID+'/me').get();
  if(m.exists){const x=m.data();
   if(x.role==='owner'&&await user.isOwner()){ME=x;return start()}
@@ -114,16 +115,19 @@ async function boot(){
  if(await user.isOwner()){const nm=(await user.me()).name||'';ME={tid:AUID,role:'owner',K:b64(crypto.getRandomValues(new Uint8Array(32))),email:nm};await db.doc('data/users/'+AUID+'/me').set(ME);return start()}
  gate();
 }
+const DAY=24*60*60*1000;
+function expired(){let at=0;try{at=+sessionStorage.getItem('mr:at')||0}catch(_){}return !at||Date.now()-at>DAY}
+function watchExpiry(){const chk=()=>{if(ME&&expired()){if(ME.role==='owner'){if(window.__flush)window.__flush();window.__signOut()}else codeSignOut()}};setInterval(chk,60000);document.addEventListener('visibilitychange',()=>{if(!document.hidden)chk()});window.addEventListener('focus',chk)}
 const stableId=x=>x.role==='worker'?'w_'+x.wid:x.role==='business'?'b_'+x.h:AUID;
 async function claim(email,code){
  email=email.trim().toLowerCase();const h=await accH(email,code),a=await db.doc('access/'+h).get();if(!a.exists)return false;
- const c=await db.doc('claims/'+h).get();if(c.exists&&c.data().dev!==DEV)return 'taken';
- await db.doc('claims/'+h).set({uid:AUID,dev:DEV});
+ const c=await db.doc('claims/'+h).get();if(c.exists&&c.data().dev!==DEV){const at=c.data().at;if(!(at&&at.toMillis&&Date.now()-at.toMillis()>DAY))return 'taken'}
+ await db.doc('claims/'+h).set({uid:AUID,dev:DEV,at:window.__ts()});
  const x=a.data(),kk=await kdf(code,email);let me;
  if(x.role==='worker'){const w=await dec(kk,x.wrap);me={tid:x.tid,role:'worker',wid:x.wid,h,email,K:w.k,C:w.c}}
  else{let K;if(x.bwrap)K=(await dec(kk,x.bwrap)).k;else{K=b64(crypto.getRandomValues(new Uint8Array(32)));await db.doc('access/'+h).update({bwrap:await enc(kk,{k:K})})}
   me={tid:'b_'+h,role:'business',h,email,K}}
- await db.doc('data/users/'+AUID+'/me').set(me);try{sessionStorage.setItem('mr:in','1')}catch(_){}ME=me;uid=stableId(me);MYK=null;NAMES=null;start();return true;
+ await db.doc('data/users/'+AUID+'/me').set(me);try{sessionStorage.setItem('mr:in','1');sessionStorage.setItem('mr:at',String(Date.now()))}catch(_){}ME=me;uid=stableId(me);MYK=null;NAMES=null;start();return true;
 }
 async function codeSignOut(){if(window.__flush)await window.__flush();try{if(ME&&ME.h)await db.doc('claims/'+ME.h).delete();await db.doc('data/users/'+AUID+'/me').delete()}catch(e){}window.__signOut()}
 function gate(m){
@@ -142,7 +146,7 @@ function langMenu(after){
 let CAT={games:[],tol:5};
 async function catKey(){return ME.role==='worker'?unb(ME.C):derive(KT(),'catalog')}
 async function loadCat(){try{const c=await db.doc('t/'+ME.tid+'/catalog/main').get();CAT=c.exists?await dec(await catKey(),c.data().enc):{games:[],tol:5}}catch(e){CAT={games:[],tol:5}}}
-async function start(){await loadCat();view='home';shell();renderView()}
+let WATCH=false;async function start(){if(!WATCH){WATCH=true;watchExpiry()}await loadCat();view='home';shell();renderView()}
 function shell(){
  const items=[['home','🏠','home'],['records','📊','records'],['export','⬇️','exportN']].concat(TO()?[['games','🎟️','gamesN'],['access','👥','access']]:[],ME.role==='owner'?[['biz','🏢','bizN']]:[]);
  const role=ME.role==='owner'?t('owner'):ME.role==='business'?t('biz')+' · '+esc(ME.email):esc(ME.email);
