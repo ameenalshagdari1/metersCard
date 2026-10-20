@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Meter Readings</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<style>
+:root{--bg:#f4f3ff;--card:#fff;--text:#1e1b3a;--muted:#6b6890;--line:#e3e0f5;--accent:#6d28d9;--accent2:#2563eb;--bad:#c2410c;--badbg:#fff1e8;--thbg:#ede9fe;--zebra:#faf9ff;--g:#dcfce7;--gt:#166534;--o:#ffedd5;--ot:#9a3412;--tot:#ede9fe;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#131124;--card:#1d1a35;--text:#ecebfa;--muted:#a09dc6;--line:#332f5a;--accent:#a78bfa;--accent2:#60a5fa;--bad:#fb923c;--badbg:#3a2415;--thbg:#2a2650;--zebra:#211e3d;--g:#12351f;--gt:#86efac;--o:#3b2413;--ot:#fdba74;--tot:#2a2650;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#131124;--card:#1d1a35;--text:#ecebfa;--muted:#a09dc6;--line:#332f5a;--accent:#a78bfa;--accent2:#60a5fa;--bad:#fb923c;--badbg:#3a2415;--thbg:#2a2650;--zebra:#211e3d;--g:#12351f;--gt:#86efac;--o:#3b2413;--ot:#fdba74;--tot:#2a2650;color-scheme:dark}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 system-ui,-apple-system,"Segoe UI",Tahoma,Roboto,sans-serif}
+main{max-width:800px;margin:0 auto;padding:16px 14px 40px}
+.hero{background:linear-gradient(135deg,#7c3aed,#2563eb 60%,#06b6d4);color:#fff;border-radius:16px;padding:12px 14px;display:flex;gap:12px;align-items:center;margin-bottom:14px;box-shadow:0 6px 20px rgba(80,60,200,.25)}
+.ttl{flex:1;min-width:0}.hero h1{font-size:19px;margin:0}.hero p{margin:0;font-size:12px;opacity:.9;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mh{position:relative}
+.ib{background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.4);border-radius:10px;width:40px;height:40px;font-size:20px;padding:0;line-height:1}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20}.drawer{position:fixed;top:0;bottom:0;inset-inline-start:0;width:min(290px,84vw);background:var(--card);z-index:21;padding:18px 12px;box-shadow:0 0 30px rgba(0,0,0,.35);overflow:auto}.ov[hidden],.drawer[hidden]{display:none}
+.dh{background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;border-radius:12px;padding:14px;margin-bottom:12px}.dh b{font-size:17px;display:block}.dh span{font-size:12px;opacity:.9}
+.ni{display:flex;gap:10px;align-items:center;width:100%;text-align:start;border:none;background:none;padding:11px 12px;border-radius:10px;font-size:15px;color:var(--text)}.ni.on{background:var(--thbg);color:var(--accent);font-weight:600}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+label{display:block;font-size:12px;color:var(--muted);margin:8px 0 3px}
+input,select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%}
+input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px}input.bad{border-color:var(--bad);background:var(--badbg)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:end}.row>div{flex:1;min-width:110px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:7px 12px}
+button.p{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#fff}button.x{border:none;background:none;color:var(--muted);padding:2px 8px}
+button.rv{border-color:var(--bad);color:var(--bad);padding:3px 10px;font-size:13px}
+.wrap{overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:480px}
+th{font-size:12px;color:var(--accent);background:var(--thbg);text-align:start;padding:7px 6px}td{padding:4px 6px;border-top:1px solid var(--line)}tbody tr:nth-child(even) td{background:var(--zebra)}
+td.n,th.n{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
+tr.t td{background:var(--tot)!important;font-weight:700;border-top:2px solid var(--accent)}.flag{color:var(--bad);font-size:12px}
+.kpi{border-radius:12px;padding:8px 16px;min-width:120px}.kpi b{display:block;font-size:21px}.kpi span{font-size:11px;text-transform:uppercase;letter-spacing:.04em}.kpi small{display:block;font-size:11px;opacity:.85}.kr{background:var(--g);color:var(--gt)}.kv{background:var(--o);color:var(--ot)}
+.note{font-size:12px;color:var(--muted);margin-top:8px}.acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;align-items:center}
+.menu{position:absolute;inset-inline-end:0;top:100%;margin-top:6px;width:190px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:6px;z-index:10;box-shadow:0 8px 28px rgba(0,0,0,.25)}.menu[hidden]{display:none}
+.li{display:block;width:100%;text-align:start;border:none;background:none;padding:9px 10px;border-radius:8px}.li.on{background:var(--thbg);color:var(--accent);font-weight:600}
+h3.sec{font-size:12px;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 6px}
+.bars{display:flex;align-items:flex-end;gap:3px;height:110px;padding:4px 0;border-bottom:1px solid var(--line)}.bars i{flex:1;min-width:3px;background:linear-gradient(180deg,var(--accent2),var(--accent));border-radius:4px 4px 0 0}
+.tw{display:flex;align-items:center;gap:8px;font-size:13px;margin:4px 0}.tw span{width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.tw i{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--accent),var(--accent2));display:block}.tw b{margin-inline-start:auto}
+.ppl{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;padding:6px 0;border-top:1px solid var(--line)}code{background:var(--tot);color:var(--accent);padding:2px 6px;border-radius:6px;font-size:14px;letter-spacing:.05em}
+.dl{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}.dlh{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;padding:0 12px 6px}
+</style></head><body><main id="app"><p class="note">…</p></main>
+<script>window.STANDALONE=true;
+(function(){
+ const mem={};let ok=true;try{localStorage.setItem('mr:t','1');localStorage.removeItem('mr:t')}catch(e){ok=false}
+ const P='mrdb:',get=k=>ok?localStorage.getItem(P+k):(mem[k]??null),set=(k,v)=>ok?localStorage.setItem(P+k,v):(mem[k]=v),del=k=>ok?localStorage.removeItem(P+k):delete mem[k],keys=()=>ok?Object.keys(localStorage).filter(k=>k.startsWith(P)).map(k=>k.slice(P.length)):Object.keys(mem);
+ const snap=(p,id)=>{const v=get(p);return{id,exists:v!==null,data:()=>v===null?undefined:JSON.parse(v)}};
+ const doc=p=>({id:p.split('/').pop(),get:async()=>snap(p,p.split('/').pop()),set:async v=>{set(p,JSON.stringify(v))},delete:async()=>{del(p)}});
+ const col=(p,f=[])=>({doc:id=>doc(p+'/'+(id||Math.random().toString(36).slice(2,12))),where:(fl,op,v)=>col(p,f.concat([[fl,op,v]])),get:async()=>{const pre=p+'/',ids=keys().filter(k=>k.startsWith(pre)&&!k.slice(pre.length).includes('/')).map(k=>k.slice(pre.length));
+  return{docs:ids.map(i=>({id:i,d:JSON.parse(get(pre+i))})).filter(x=>f.every(([fl,op,v])=>x.d[fl]===v)).map(x=>({id:x.id,data:()=>x.d}))}}});
+ const KU='mrlocal:u',U=()=>{try{return localStorage.getItem(KU)||'owner'}catch(e){return'owner'}};
+ window.__switchUser=id=>{try{localStorage.setItem(KU,id||'owner')}catch(e){}location.reload()};
+ window.__newGuest=()=>window.__switchUser('guest-'+Math.random().toString(36).slice(2,8));
+ window.__guests=()=>keys().filter(k=>/^data\/users\/guest-[^/]+\/me$/.test(k)).map(k=>{let v={};try{v=JSON.parse(get(k))}catch(e){}return{id:k.split('/')[2],email:v.email||'',role:v.role||''}});
+ const db={doc,collection:col},user={id:async()=>U(),me:async()=>({name:U()==='owner'?'Owner':'Guest'}),isOwner:async()=>U()==='owner'};
+ const downloads={save:async({filename,data})=>{const b=data instanceof Blob?data:new Blob([data]);const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}};
+ window.claude={use:async n=>n==='db'?db:n==='user'?user:n==='downloads'?downloads:null};
+})();</script>
+<script>
+const $=s=>document.querySelector(s),app=$('#app');
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const fmt=n=>n.toLocaleString('en-US',{maximumFractionDigits:2});
+const blank=v=>String(v??'').trim()==='',num=v=>{const s=String(v??'').replace(/[٠-٩]/g,d=>d.charCodeAt(0)-1632).replace(/[۰-۹]/g,d=>d.charCodeAt(0)-1776).replace(/٫/g,'.').trim();return s!==''&&isFinite(s)?Number(s):NaN};
+const PAGE=window.STANDALONE?location.href.split('#')[0]:'https://claude.ai/artifact/JK4me3mCmqgHn34C1TUkm8';
+/* ---------- crypto ---------- */
+const TE=new TextEncoder(),TD=new TextDecoder();
+const b64=u=>{let s='';u.forEach(c=>s+=String.fromCharCode(c));return btoa(s)},unb=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const sha=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',TE.encode(String(s).trim().toLowerCase())))].map(b=>b.toString(16).padStart(2,'0')).join('');
+const aes=raw=>crypto.subtle.importKey('raw',raw,'AES-GCM',false,['encrypt','decrypt']);
+async function enc(raw,obj){const iv=crypto.getRandomValues(new Uint8Array(12)),ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv},await aes(raw),TE.encode(JSON.stringify(obj)))),o=new Uint8Array(12+ct.length);o.set(iv);o.set(ct,12);return b64(o)}
+async function dec(raw,s){const u=unb(s);return JSON.parse(TD.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:u.slice(0,12)},await aes(raw),u.slice(12))))}
+async function derive(kt,label){const k=await crypto.subtle.importKey('raw',kt,{name:'HMAC',hash:'SHA-256'},false,['sign']);return new Uint8Array(await crypto.subtle.sign('HMAC',k,TE.encode(label)))}
+async function kdf(code,email){const m=await crypto.subtle.importKey('raw',TE.encode(code.trim().toUpperCase()),'PBKDF2',false,['deriveBits']);return new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2',salt:TE.encode('mr|'+email.trim().toLowerCase()),iterations:150000,hash:'SHA-256'},m,256))}
+const accH=(email,code)=>sha(email.trim().toLowerCase()+'|'+code.trim().toUpperCase());
+/* ---------- i18n ---------- */
+const LANGS=[['en','English'],['ar','العربية'],['fr','Français'],['es','Español'],['ur','اردو']],RTL=['ar','ur'];
+const T={
+en:{title:'Meter Readings',owner:'Owner',biz:'Business owner',signed:'Signed in as',own:'Only you and your owner can see your entries.',ownerSub:'Entries save automatically.',date:'Date',cap:'Capacity (wrap at)',rev:'Revenue',vol:'Volume',price:'Price',begin:'Begin',end:'End',total:'Total',add:'+ Add row',add10:'+ 10 rows',rule:'Blank Begin/End → 0. End ≤ Begin → Begin − End. End > Begin → Begin + Capacity − End.',loading:'Loading…',saving:'Saving…',saved:'Saved ✓',notSaved:'Not saved: ',loaded:'Loaded',newDay:'New day',menu:'Menu',home:'Home',records:'Records',exportN:'Export',access:'Give access',bizN:'Businesses',worker:'Worker',all:'All workers',period:'Period',today:'Today',yest:'Yesterday',week:'Last week',month:'Last month',custom:'Custom date',start:'Start date',endd:'End date',format:'Format',exp:'Export',pick:'Pick a start date and an end date (start before end).',none:'No entries in this range.',done:'Exported ✓',cancel:'Cancelled.',fail:'Export failed: ',noDl:'Downloads are not available here.',lib:'Library did not load; use CSV.',pemail:"Person's email",share:'Share',valid:'Enter a valid email address.',shared:'Shared with ',code:'Access code',copyCode:'Copy code',copied:'Copied ✓',draft:'Open email draft',copyMsg:'Copy message',nosend:'The app cannot send email itself. Send the email draft or the code to the person. They must also be able to open this page.',people:'People with access',revoke:'Revoke',sure:'Tap again to confirm',revoked:'Access revoked.',defPrice:'Default price',subj:'Access to Meter Readings',mail:'Hi,\n\nYou have been given access to Meter Readings.\nOpen: {l}\nEmail: {e}\nAccess code: {c}\n(Enter both. The code works on one device only.)',bizH:'Give app access to another business',bizNote:'They get their own private workspace. You cannot see their data, and they cannot see yours.',gsub:'Enter your email and the access code you were given.',lemail:'Your email',lcode:'Access code',go:'Continue',bad:'Email or code is not valid.',taken:'This code is already linked to another device or account. Ask for a new one.',removed:'Your access was removed.',sign:'Open this page signed in to claude.ai to continue.',rowsN:'Rows',vsPrev:'vs previous period',daily:'Revenue per day',top:'Top workers',hist:'Change history',noHist:'No changes recorded.',search:'Search',minVol:'Min volume',flagged:'Flagged only',wDup:'Row {a} repeats row {b}',wZero:'Row {a}: volume is 0',wHigh:'Row {a}: volume is unusually high',wPrice:'Row {a}: price differs from the others',lang:'Language',game:'Game',cust:'Custom',gamesN:'Games',gName:'Game name',pSize:'Tickets per pack',tolL:'Alert when over/short is more than',addG:'Add game',cashH:'Daily cash check',cCount:'Cash counted',cPrize:'Prizes paid from till',cExch:'Exchanged tickets (value)',sales:'Ticket sales',expct:'Expected cash',overS:'Over / short',recon:'Daily reconciliation',carried:'Begin filled from',exportR:'Export reconciliation',delG:'Delete',range:'Must be 0–{n}',needSize:'End is higher than Begin: add the pack size in Games',sizeHint:'Begin and End are the ticket numbers at the start and end of the day. Tickets per pack is optional: it is only needed when a pack runs out and a new one starts the same day.',opt:'optional',gErr:'Enter a game name and a price.',copyY:'Copy yesterday',noPrev:'No earlier day to copy.',copiedFrom:'Copied from',already:'Already copied.'},
+ar:{title:'قراءات العدادات',owner:'المالك',biz:'مالك نشاط',signed:'تم تسجيل الدخول باسم',own:'أنت ومالكك فقط يمكنكما رؤية إدخالاتك.',ownerSub:'تُحفظ الإدخالات تلقائيًا.',date:'التاريخ',cap:'السعة (نقطة الالتفاف)',rev:'الإيراد',vol:'الحجم',price:'السعر',begin:'البداية',end:'النهاية',total:'الإجمالي',add:'+ إضافة صف',add10:'+ 10 صفوف',rule:'البداية/النهاية الفارغة → 0. النهاية ≤ البداية → البداية − النهاية. النهاية > البداية → البداية + السعة − النهاية.',loading:'جارٍ التحميل…',saving:'جارٍ الحفظ…',saved:'تم الحفظ ✓',notSaved:'لم يتم الحفظ: ',loaded:'تم التحميل',newDay:'يوم جديد',menu:'القائمة',home:'الرئيسية',records:'السجلات',exportN:'تصدير',access:'منح وصول',bizN:'الأنشطة التجارية',worker:'الموظف',all:'كل الموظفين',period:'الفترة',today:'اليوم',yest:'أمس',week:'الأسبوع الماضي',month:'الشهر الماضي',custom:'تاريخ مخصص',start:'تاريخ البداية',endd:'تاريخ النهاية',format:'الصيغة',exp:'تصدير',pick:'اختر تاريخ بداية وتاريخ نهاية (البداية قبل النهاية).',none:'لا توجد إدخالات في هذه الفترة.',done:'تم التصدير ✓',cancel:'تم الإلغاء.',fail:'فشل التصدير: ',noDl:'التنزيل غير متاح هنا.',lib:'لم يتم تحميل المكتبة؛ استخدم CSV.',pemail:'بريد الشخص',share:'مشاركة',valid:'أدخل بريدًا إلكترونيًا صحيحًا.',shared:'تمت المشاركة مع ',code:'رمز الدخول',copyCode:'نسخ الرمز',copied:'تم النسخ ✓',draft:'فتح مسودة البريد',copyMsg:'نسخ الرسالة',nosend:'لا يستطيع التطبيق إرسال البريد بنفسه. أرسل مسودة البريد أو الرمز إلى الشخص. ويجب أن يتمكن من فتح هذه الصفحة.',people:'الأشخاص المصرح لهم',revoke:'إلغاء الوصول',sure:'اضغط مرة أخرى للتأكيد',revoked:'تم إلغاء الوصول.',defPrice:'السعر الافتراضي',subj:'الوصول إلى قراءات العدادات',mail:'مرحبًا،\n\nتمت مشاركة تطبيق قراءات العدادات معك.\nالرابط: {l}\nالبريد: {e}\nرمز الدخول: {c}\n(أدخل الاثنين. الرمز يعمل على جهاز واحد فقط.)',bizH:'منح تطبيق لنشاط تجاري آخر',bizNote:'يحصلون على مساحة عمل خاصة بهم. لا يمكنك رؤية بياناتهم ولا يمكنهم رؤية بياناتك.',gsub:'أدخل بريدك الإلكتروني ورمز الدخول الذي حصلت عليه.',lemail:'بريدك الإلكتروني',lcode:'رمز الدخول',go:'متابعة',bad:'البريد أو الرمز غير صحيح.',taken:'هذا الرمز مرتبط بجهاز أو حساب آخر. اطلب رمزًا جديدًا.',removed:'تم إلغاء وصولك.',sign:'افتح هذه الصفحة بعد تسجيل الدخول إلى claude.ai للمتابعة.',rowsN:'عدد الصفوف',vsPrev:'مقارنة بالفترة السابقة',daily:'الإيراد اليومي',top:'أفضل الموظفين',hist:'سجل التغييرات',noHist:'لا توجد تغييرات مسجلة.',search:'بحث',minVol:'أدنى حجم',flagged:'المُعلَّم فقط',wDup:'الصف {a} يكرر الصف {b}',wZero:'الصف {a}: الحجم 0',wHigh:'الصف {a}: الحجم مرتفع بشكل غير معتاد',wPrice:'الصف {a}: السعر يختلف عن الباقي',lang:'اللغة',game:'اللعبة',cust:'مخصص',gamesN:'الألعاب',gName:'اسم اللعبة',pSize:'عدد التذاكر في الحزمة',tolL:'تنبيه عندما يتجاوز الفرق',addG:'إضافة لعبة',cashH:'مطابقة النقد اليومية',cCount:'النقد المعدود',cPrize:'الجوائز المدفوعة من الصندوق',cExch:'تذاكر مستبدلة (القيمة)',sales:'مبيعات التذاكر',expct:'النقد المتوقع',overS:'زيادة / عجز',recon:'المطابقة اليومية',carried:'البداية من',exportR:'تصدير المطابقة',delG:'حذف',range:'يجب أن يكون بين 0 و{n}',needSize:'النهاية أعلى من البداية: أضف عدد التذاكر في الحزمة من قسم الألعاب',sizeHint:'البداية والنهاية هما رقما التذكرة في بداية اليوم ونهايته. عدد التذاكر في الحزمة اختياري: يلزم فقط عند انتهاء حزمة وبدء حزمة جديدة في اليوم نفسه.',opt:'اختياري',gErr:'أدخل اسم اللعبة والسعر.',copyY:'نسخ اليوم السابق',noPrev:'لا يوجد يوم سابق للنسخ.',copiedFrom:'تم النسخ من',already:'تم النسخ من قبل.'},
+fr:{title:'Relevés de compteurs',owner:'Propriétaire',biz:'Propriétaire d’entreprise',signed:'Connecté en tant que',own:'Seuls vous et votre propriétaire voyez vos saisies.',ownerSub:'Les saisies sont enregistrées automatiquement.',date:'Date',cap:'Capacité (retour à zéro)',rev:'Revenu',vol:'Volume',price:'Prix',begin:'Début',end:'Fin',total:'Total',add:'+ Ajouter une ligne',add10:'+ 10 lignes',rule:'Début/Fin vide → 0. Fin ≤ Début → Début − Fin. Fin > Début → Début + Capacité − Fin.',loading:'Chargement…',saving:'Enregistrement…',saved:'Enregistré ✓',notSaved:'Non enregistré : ',loaded:'Chargé',newDay:'Nouveau jour',menu:'Menu',home:'Accueil',records:'Historique',exportN:'Exporter',access:'Donner l’accès',bizN:'Entreprises',worker:'Employé',all:'Tous les employés',period:'Période',today:'Aujourd’hui',yest:'Hier',week:'Semaine dernière',month:'Mois dernier',custom:'Dates personnalisées',start:'Date de début',endd:'Date de fin',format:'Format',exp:'Exporter',pick:'Choisissez une date de début et de fin (début avant fin).',none:'Aucune saisie sur cette période.',done:'Exporté ✓',cancel:'Annulé.',fail:'Échec de l’export : ',noDl:'Téléchargements indisponibles ici.',lib:'Bibliothèque non chargée ; utilisez CSV.',pemail:'E-mail de la personne',share:'Partager',valid:'Saisissez une adresse e-mail valide.',shared:'Partagé avec ',code:'Code d’accès',copyCode:'Copier le code',copied:'Copié ✓',draft:'Ouvrir le brouillon d’e-mail',copyMsg:'Copier le message',nosend:'L’application ne peut pas envoyer d’e-mail. Envoyez le brouillon ou le code à la personne. Elle doit aussi pouvoir ouvrir cette page.',people:'Personnes ayant accès',revoke:'Révoquer',sure:'Touchez à nouveau pour confirmer',revoked:'Accès révoqué.',defPrice:'Prix par défaut',subj:'Accès à Relevés de compteurs',mail:'Bonjour,\n\nVous avez reçu l’accès à Relevés de compteurs.\nOuvrir : {l}\nE-mail : {e}\nCode d’accès : {c}\n(Saisissez les deux. Le code ne fonctionne que sur un appareil.)',bizH:'Donner l’application à une autre entreprise',bizNote:'Elle obtient son propre espace privé. Vous ne voyez pas ses données et elle ne voit pas les vôtres.',gsub:'Saisissez votre e-mail et le code d’accès reçu.',lemail:'Votre e-mail',lcode:'Code d’accès',go:'Continuer',bad:'E-mail ou code invalide.',taken:'Ce code est déjà lié à un autre appareil ou compte. Demandez-en un nouveau.',removed:'Votre accès a été supprimé.',sign:'Ouvrez cette page connecté à claude.ai pour continuer.',rowsN:'Lignes',vsPrev:'vs période précédente',daily:'Revenu par jour',top:'Meilleurs employés',hist:'Historique des modifications',noHist:'Aucune modification.',search:'Rechercher',minVol:'Volume min.',flagged:'Signalées seulement',wDup:'La ligne {a} répète la ligne {b}',wZero:'Ligne {a} : volume 0',wHigh:'Ligne {a} : volume anormalement élevé',wPrice:'Ligne {a} : prix différent des autres',lang:'Langue',game:'Jeu',cust:'Personnalisé',gamesN:'Jeux',gName:'Nom du jeu',pSize:'Tickets par pack',tolL:'Alerte si l’écart dépasse',addG:'Ajouter un jeu',cashH:'Contrôle de caisse quotidien',cCount:'Espèces comptées',cPrize:'Gains payés en caisse',cExch:'Tickets échangés (valeur)',sales:'Ventes de tickets',expct:'Espèces attendues',overS:'Excédent / manque',recon:'Rapprochement quotidien',carried:'Début repris de',exportR:'Exporter le rapprochement',delG:'Supprimer',range:'Doit être entre 0 et {n}',needSize:'La fin dépasse le début : indiquez la taille du pack dans Jeux',sizeHint:'Début et Fin sont les numéros de ticket au début et à la fin de la journée. Les tickets par pack sont facultatifs : utiles seulement si un pack se termine et qu’un nouveau commence le même jour.',opt:'facultatif',gErr:'Saisissez un nom de jeu et un prix.',copyY:'Copier hier',noPrev:'Aucun jour précédent à copier.',copiedFrom:'Copié depuis',already:'Déjà copié.'},
+es:{title:'Lecturas de medidores',owner:'Propietario',biz:'Dueño de negocio',signed:'Sesión iniciada como',own:'Solo usted y su propietario ven sus entradas.',ownerSub:'Las entradas se guardan automáticamente.',date:'Fecha',cap:'Capacidad (reinicio)',rev:'Ingresos',vol:'Volumen',price:'Precio',begin:'Inicio',end:'Final',total:'Total',add:'+ Añadir fila',add10:'+ 10 filas',rule:'Inicio/Final vacío → 0. Final ≤ Inicio → Inicio − Final. Final > Inicio → Inicio + Capacidad − Final.',loading:'Cargando…',saving:'Guardando…',saved:'Guardado ✓',notSaved:'No guardado: ',loaded:'Cargado',newDay:'Día nuevo',menu:'Menú',home:'Inicio',records:'Registros',exportN:'Exportar',access:'Dar acceso',bizN:'Negocios',worker:'Empleado',all:'Todos los empleados',period:'Periodo',today:'Hoy',yest:'Ayer',week:'Semana pasada',month:'Mes pasado',custom:'Fecha personalizada',start:'Fecha de inicio',endd:'Fecha final',format:'Formato',exp:'Exportar',pick:'Elija fecha de inicio y final (inicio antes del final).',none:'Sin entradas en este rango.',done:'Exportado ✓',cancel:'Cancelado.',fail:'Error al exportar: ',noDl:'Descargas no disponibles aquí.',lib:'La biblioteca no cargó; use CSV.',pemail:'Correo de la persona',share:'Compartir',valid:'Introduzca un correo válido.',shared:'Compartido con ',code:'Código de acceso',copyCode:'Copiar código',copied:'Copiado ✓',draft:'Abrir borrador de correo',copyMsg:'Copiar mensaje',nosend:'La app no puede enviar correos. Envíe el borrador o el código a la persona. También debe poder abrir esta página.',people:'Personas con acceso',revoke:'Revocar',sure:'Toque otra vez para confirmar',revoked:'Acceso revocado.',defPrice:'Precio por defecto',subj:'Acceso a Lecturas de medidores',mail:'Hola,\n\nSe le ha dado acceso a Lecturas de medidores.\nAbrir: {l}\nCorreo: {e}\nCódigo de acceso: {c}\n(Introduzca ambos. El código funciona en un solo dispositivo.)',bizH:'Dar la app a otro negocio',bizNote:'Obtiene su propio espacio privado. Usted no ve sus datos y ellos no ven los suyos.',gsub:'Introduzca su correo y el código de acceso recibido.',lemail:'Su correo',lcode:'Código de acceso',go:'Continuar',bad:'Correo o código no válido.',taken:'Este código ya está vinculado a otro dispositivo o cuenta. Pida uno nuevo.',removed:'Se eliminó su acceso.',sign:'Abra esta página con sesión en claude.ai para continuar.',rowsN:'Filas',vsPrev:'vs periodo anterior',daily:'Ingresos por día',top:'Mejores empleados',hist:'Historial de cambios',noHist:'Sin cambios registrados.',search:'Buscar',minVol:'Volumen mín.',flagged:'Solo marcadas',wDup:'La fila {a} repite la fila {b}',wZero:'Fila {a}: volumen 0',wHigh:'Fila {a}: volumen inusualmente alto',wPrice:'Fila {a}: el precio difiere del resto',lang:'Idioma',game:'Juego',cust:'Personalizado',gamesN:'Juegos',gName:'Nombre del juego',pSize:'Boletos por paquete',tolL:'Alertar si la diferencia supera',addG:'Añadir juego',cashH:'Control de caja diario',cCount:'Efectivo contado',cPrize:'Premios pagados de caja',cExch:'Boletos canjeados (valor)',sales:'Ventas de boletos',expct:'Efectivo esperado',overS:'Sobrante / faltante',recon:'Conciliación diaria',carried:'Inicio tomado de',exportR:'Exportar conciliación',delG:'Eliminar',range:'Debe estar entre 0 y {n}',needSize:'El final supera el inicio: añada el tamaño del paquete en Juegos',sizeHint:'Inicio y Final son los números de boleto al comenzar y terminar el día. Los boletos por paquete son opcionales: solo se necesitan cuando un paquete se acaba y empieza otro el mismo día.',opt:'opcional',gErr:'Introduzca nombre del juego y precio.',copyY:'Copiar ayer',noPrev:'No hay un día anterior para copiar.',copiedFrom:'Copiado de',already:'Ya copiado.'},
+ur:{title:'میٹر ریڈنگز',owner:'مالک',biz:'کاروبار کا مالک',signed:'بطور لاگ ان',own:'صرف آپ اور آپ کا مالک آپ کی اندراجات دیکھ سکتے ہیں۔',ownerSub:'اندراجات خود بخود محفوظ ہوتی ہیں۔',date:'تاریخ',cap:'گنجائش (دوبارہ شروع)',rev:'آمدنی',vol:'مقدار',price:'قیمت',begin:'آغاز',end:'اختتام',total:'کل',add:'+ قطار شامل کریں',add10:'+ 10 قطاریں',rule:'خالی آغاز/اختتام → 0۔ اختتام ≤ آغاز → آغاز − اختتام۔ اختتام > آغاز → آغاز + گنجائش − اختتام۔',loading:'لوڈ ہو رہا ہے…',saving:'محفوظ ہو رہا ہے…',saved:'محفوظ ✓',notSaved:'محفوظ نہیں ہوا: ',loaded:'لوڈ ہو گیا',newDay:'نیا دن',menu:'مینو',home:'ہوم',records:'ریکارڈ',exportN:'ایکسپورٹ',access:'رسائی دیں',bizN:'کاروبار',worker:'ملازم',all:'تمام ملازمین',period:'مدت',today:'آج',yest:'کل',week:'پچھلا ہفتہ',month:'پچھلا مہینہ',custom:'اپنی تاریخ',start:'شروع کی تاریخ',endd:'آخری تاریخ',format:'فارمیٹ',exp:'ایکسپورٹ',pick:'شروع اور آخری تاریخ چنیں (شروع پہلے ہو)۔',none:'اس مدت میں کوئی اندراج نہیں۔',done:'ایکسپورٹ ہو گیا ✓',cancel:'منسوخ۔',fail:'ایکسپورٹ ناکام: ',noDl:'یہاں ڈاؤن لوڈ دستیاب نہیں۔',lib:'لائبریری لوڈ نہیں ہوئی؛ CSV استعمال کریں۔',pemail:'شخص کا ای میل',share:'شیئر کریں',valid:'درست ای میل درج کریں۔',shared:'شیئر کیا گیا: ',code:'رسائی کوڈ',copyCode:'کوڈ کاپی کریں',copied:'کاپی ہو گیا ✓',draft:'ای میل ڈرافٹ کھولیں',copyMsg:'پیغام کاپی کریں',nosend:'ایپ خود ای میل نہیں بھیج سکتی۔ ڈرافٹ یا کوڈ اس شخص کو بھیجیں۔ اسے یہ صفحہ بھی کھولنے کے قابل ہونا چاہیے۔',people:'رسائی والے افراد',revoke:'رسائی ختم کریں',sure:'تصدیق کے لیے دوبارہ دبائیں',revoked:'رسائی ختم کر دی گئی۔',defPrice:'ڈیفالٹ قیمت',subj:'میٹر ریڈنگز تک رسائی',mail:'سلام،\n\nآپ کو میٹر ریڈنگز تک رسائی دی گئی ہے۔\nکھولیں: {l}\nای میل: {e}\nرسائی کوڈ: {c}\n(دونوں درج کریں۔ کوڈ صرف ایک ڈیوائس پر کام کرتا ہے۔)',bizH:'ایپ کسی اور کاروبار کو دیں',bizNote:'انہیں اپنی الگ نجی جگہ ملتی ہے۔ آپ ان کا ڈیٹا نہیں دیکھ سکتے اور وہ آپ کا نہیں۔',gsub:'اپنا ای میل اور ملا ہوا رسائی کوڈ درج کریں۔',lemail:'آپ کا ای میل',lcode:'رسائی کوڈ',go:'جاری رکھیں',bad:'ای میل یا کوڈ درست نہیں۔',taken:'یہ کوڈ کسی اور ڈیوائس یا اکاؤنٹ سے جڑا ہے۔ نیا کوڈ مانگیں۔',removed:'آپ کی رسائی ختم کر دی گئی۔',sign:'جاری رکھنے کے لیے claude.ai میں لاگ ان ہو کر یہ صفحہ کھولیں۔',rowsN:'قطاریں',vsPrev:'پچھلی مدت کے مقابلے میں',daily:'روزانہ آمدنی',top:'بہترین ملازمین',hist:'تبدیلیوں کی تاریخ',noHist:'کوئی تبدیلی درج نہیں۔',search:'تلاش',minVol:'کم از کم مقدار',flagged:'صرف نشان زدہ',wDup:'قطار {a} قطار {b} کو دہراتی ہے',wZero:'قطار {a}: مقدار 0',wHigh:'قطار {a}: مقدار غیر معمولی زیادہ',wPrice:'قطار {a}: قیمت باقی سے مختلف',lang:'زبان',game:'گیم',cust:'اپنی مرضی',gamesN:'گیمز',gName:'گیم کا نام',pSize:'ہر پیک میں ٹکٹ',tolL:'الرٹ جب فرق اس سے زیادہ ہو',addG:'گیم شامل کریں',cashH:'روزانہ کیش چیک',cCount:'گنی ہوئی نقدی',cPrize:'دراز سے ادا کردہ انعامات',cExch:'بدلے گئے ٹکٹ (قدر)',sales:'ٹکٹ کی فروخت',expct:'متوقع نقدی',overS:'زیادہ / کم',recon:'روزانہ مطابقت',carried:'آغاز یہاں سے',exportR:'مطابقت ایکسپورٹ کریں',delG:'حذف',range:'0 سے {n} کے درمیان ہونا چاہیے',needSize:'اختتام آغاز سے زیادہ ہے: گیمز میں پیک سائز شامل کریں',sizeHint:'آغاز اور اختتام دن کے شروع اور آخر میں ٹکٹ کے نمبر ہیں۔ ہر پیک میں ٹکٹ اختیاری ہے: صرف تب چاہیے جب ایک پیک ختم ہو اور اسی دن نیا شروع ہو۔',opt:'اختیاری',gErr:'گیم کا نام اور قیمت درج کریں۔',copyY:'کل کی کاپی',noPrev:'کاپی کرنے کے لیے پچھلا دن نہیں۔',copiedFrom:'یہاں سے کاپی کیا:',already:'پہلے ہی کاپی ہو چکا۔'}};
+let LANG='en';try{const l=localStorage.getItem('mr:lang');if(T[l])LANG=l}catch(e){}
+const t=k=>(T[LANG]&&T[LANG][k])??T.en[k]??k;
+const applyLang=()=>{document.documentElement.lang=LANG;document.documentElement.dir=RTL.includes(LANG)?'rtl':'ltr'};
+const DEV=(()=>{let d='nodev';try{d=localStorage.getItem('mr:dev');if(!d){d=crypto.randomUUID?crypto.randomUUID():String(Math.random()).slice(2)+Date.now();localStorage.setItem('mr:dev',d)}}catch(e){}return d})();
+function calc(r,cap){if(num(r.c)>0)cap=num(r.c);else if(r.g)cap=Infinity;
+ if(blank(r.b)||blank(r.e))return{rev:0,vol:0,flag:'',pb:false,bb:false,eb:false};
+ const b=num(r.b),e=num(r.e),p=blank(r.p)?0:num(r.p),bb=!(b>=0&&b<=cap),eb=!(e>=0&&e<=cap),pb=isNaN(p);
+ if(bb||eb)return{rev:0,vol:0,flag:'!',pb,bb,eb};
+ if(e>b&&r.g&&!(num(r.c)>0))return{rev:0,vol:0,flag:'size',pb,bb,eb};const vol=e<=b?b-e:b+cap-e;return{rev:pb?0:vol*p,vol,flag:pb?'!':'',pb,bb,eb};
+}
+/* ---------- state ---------- */
+let db,user,uid,ME=null,view='home',MYK=null,NAMES=null;
+const TO=()=>ME&&ME.role!=='worker',LABEL=()=>ME.role==='worker'?'w:'+ME.wid:'o:'+uid,KT=()=>unb(ME.K);
+async function myKey(){return MYK||(MYK=ME.role==='worker'?unb(ME.K):await derive(KT(),'o:'+uid))}
+async function boot(){
+ applyLang();
+ try{[db,user]=await Promise.all([claude.use('db'),claude.use('user')])}catch(e){}
+ if(!db||!user){app.innerHTML=`<p class="note">${t('sign')}</p>`;return}
+ uid=await user.id();
+ const m=await db.doc('data/users/'+uid+'/me').get();
+ if(m.exists){const x=m.data();
+  if(x.role==='owner'){ME=x;return start()}
+  const[a,c]=await Promise.all([db.doc('access/'+x.h).get(),db.doc('claims/'+x.h).get()]);
+  if(a.exists&&c.exists&&c.data().uid===uid&&c.data().dev===DEV){ME=x;return start()}
+  return gate(a.exists?t('taken'):t('removed'))}
+ if(await user.isOwner()){const nm=(await user.me()).name||'';ME={tid:uid,role:'owner',K:b64(crypto.getRandomValues(new Uint8Array(32))),email:nm};await db.doc('data/users/'+uid+'/me').set(ME);return start()}
+ gate();
+}
+async function claim(email,code){
+ email=email.trim().toLowerCase();const h=await accH(email,code),a=await db.doc('access/'+h).get();if(!a.exists)return false;
+ const c=await db.doc('claims/'+h).get();if(c.exists&&(c.data().uid!==uid||c.data().dev!==DEV))return 'taken';
+ const x=a.data();let me;
+ if(x.role==='worker'){const w=await dec(await kdf(code,email),x.wrap);me={tid:x.tid,role:'worker',wid:x.wid,h,email,K:w.k,C:w.c}}
+ else{const old=await db.doc('data/users/'+uid+'/me').get();me=old.exists&&old.data().role==='business'?{...old.data(),h,email}:{tid:uid,role:'business',h,email,K:b64(crypto.getRandomValues(new Uint8Array(32)))}}
+ await db.doc('claims/'+h).set({uid,dev:DEV});await db.doc('data/users/'+uid+'/me').set(me);ME=me;MYK=null;NAMES=null;start();return true;
+}
+function gate(m){
+ app.innerHTML=`<div class="hero"><div class="ttl"><h1>${t('title')}</h1><p>${t('gsub')}</p></div><div class="mh"><button class="ib" id="lb">🌐</button><div class="menu" id="lm" hidden></div></div></div><div class="card"><label>${t('lemail')}</label><input id="ge" type="email" autocomplete="email"><label>${t('lcode')}</label><input id="gc" autocomplete="off" style="letter-spacing:.1em"><div class="acts"><button class="p" id="go">${t('go')}</button></div><p class="note flag" id="gm">${esc(m||'')}</p>${window.STANDALONE?'<p class="note"><a href="#" id="bo">Back to owner (local test)</a></p>':''}</div>`;
+ langMenu(()=>gate(m));
+ const go=async()=>{$('#gm').textContent='';try{const r=await claim($('#ge').value,$('#gc').value);if(r===false)$('#gm').textContent=t('bad');else if(r==='taken')$('#gm').textContent=t('taken')}catch(e){$('#gm').textContent=t('bad')}};
+ if($('#bo'))$('#bo').onclick=e=>{e.preventDefault();window.__switchUser('owner')};$('#go').onclick=go;$('#gc').onkeydown=e=>{if(e.key==='Enter')go()};
+}
+function langMenu(after){
+ const lm=$('#lm'),lb=$('#lb');lm.innerHTML=LANGS.map(([c,n])=>`<button class="li${c===LANG?' on':''}" data-l="${c}">${n}</button>`).join('');
+ lb.onclick=e=>{e.stopPropagation();lm.hidden=!lm.hidden};
+ lm.onclick=async e=>{const l=e.target.dataset.l;if(!l)return;if(window.__flush)await window.__flush();LANG=l;try{localStorage.setItem('mr:lang',l)}catch(_){}applyLang();after()};
+ document.addEventListener('click',e=>{if(lm.isConnected&&!lm.hidden&&!lm.contains(e.target))lm.hidden=true});
+}
+/* ---------- shell ---------- */
+let CAT={games:[],tol:5};
+async function catKey(){return ME.role==='worker'?unb(ME.C):derive(KT(),'catalog')}
+async function loadCat(){try{const c=await db.doc('t/'+ME.tid+'/catalog/main').get();CAT=c.exists?await dec(await catKey(),c.data().enc):{games:[],tol:5}}catch(e){CAT={games:[],tol:5}}}
+async function start(){await loadCat();view='home';shell();renderView()}
+function shell(){
+ const items=[['home','🏠','home'],['records','📊','records'],['export','⬇️','exportN']].concat(TO()?[['games','🎟️','gamesN'],['access','👥','access']]:[],ME.role==='owner'?[['biz','🏢','bizN']]:[]);
+ const role=ME.role==='owner'?t('owner'):ME.role==='business'?t('biz')+' · '+esc(ME.email):esc(ME.email);
+ app.innerHTML=`<div class="hero"><button class="ib" id="hb" aria-label="${t('menu')}">☰</button><div class="ttl"><h1>${t('title')}</h1><p>${role}</p></div></div>
+ <div class="ov" id="ov" hidden></div><nav class="drawer" id="dr" hidden><div class="dh"><b>${t('title')}</b><span>${role}</span></div>${items.map(([v,i,k])=>`<button class="ni" data-v="${v}"><span>${i}</span>${t(k)}</button>`).join('')}<div class="dl"><button class="ni" data-lt="1"><span>🌐</span>${t('lang')} · ${LANGS.find(l=>l[0]===LANG)[1]}<span style="margin-inline-start:auto" id="lch">▾</span></button><div id="ll" hidden style="padding-inline-start:12px">${LANGS.map(([c,n])=>`<button class="ni${c===LANG?' on':''}" data-l="${c}">${n}</button>`).join('')}</div></div>${window.STANDALONE?`<div class="dl"><div class="dlh">Local test mode</div>${ME.role==='owner'?`<button class="ni" data-sw="__new"><span>➕</span>Test as a new user</button>`+window.__guests().map(g=>`<button class="ni" data-sw="${esc(g.id)}"><span>👤</span>${esc(g.email||g.id)}</button>`).join(''):`<button class="ni" data-sw="owner"><span>↩</span>Back to owner</button>`}<p class="note" style="padding:0 12px">Everything stays in this browser. Use it to preview every window and test invites.</p></div>`:''}</nav><div id="page"></div>`;
+ const dr=$('#dr'),ov=$('#ov'),close=()=>{dr.hidden=ov.hidden=true};
+ $('#hb').onclick=()=>{dr.hidden=ov.hidden=false;dr.querySelectorAll('.ni').forEach(b=>b.classList.toggle('on',b.dataset.v===view))};
+ ov.onclick=close;dr.onclick=async e=>{const b=e.target.closest('.ni');if(!b)return;if(b.dataset.sw){const v=b.dataset.sw;if(v==='__new')window.__newGuest();else window.__switchUser(v);return}if(b.dataset.lt){const l=$('#ll');l.hidden=!l.hidden;$('#lch').textContent=l.hidden?'▾':'▴';return}if(window.__flush)await window.__flush();if(b.dataset.l){LANG=b.dataset.l;try{localStorage.setItem('mr:lang',LANG)}catch(_){}applyLang();shell();renderView();return}view=b.dataset.v;close();renderView()};
+ 
+}
+function renderView(){({home,records,games:gamesView,export:exportView,access:()=>accessView('worker'),biz:()=>accessView('business')})[view]()}
+/* ---------- data helpers ---------- */
+async function people(){
+ const pk=await derive(KT(),'people'),s=await db.collection('t/'+ME.tid+'/people').get(),out=[];
+ for(const d of s.docs){try{out.push({id:d.id,...(await dec(pk,d.data().enc))})}catch(e){}}return out}
+async function nameMap(){if(NAMES)return NAMES;const m={};if(TO()){m['o:'+uid]=ME.role==='owner'?t('owner'):ME.email;(await people()).forEach(p=>{if(p.kind==='worker')m['w:'+p.id]=p.email})}return NAMES=m}
+async function loadDays(f,tt,sel){
+ const col=db.collection('t/'+ME.tid+'/days'),snap=TO()?await col.get():await col.where('u','==',uid).get(),nm=await nameMap(),out=[];
+ for(const d of snap.docs){const x=d.data();if(x.d<f||x.d>tt||(sel&&x.l!==sel))continue;
+  try{const k=TO()?await derive(KT(),x.l):await myKey(),p=await dec(k,x.enc);out.push({date:x.d,l:x.l,worker:nm[x.l]||'',cap:p.cap,rows:p.rows,cash:p.cash})}catch(e){}}
+ return out}
+/* ---------- home ---------- */
+let DEFP='';
+function diffRows(a,b){const o=[],n=Math.max(a.length,b.length);for(let i=0;i<n&&o.length<30;i++){if(!a[i])o.push({i:i+1,k:'add'});else if(!b[i])o.push({i:i+1,k:'del'});else['p','b','e'].forEach(k=>{if(String(a[i][k]??'')!==String(b[i][k]??''))o.push({i:i+1,k,a:a[i][k]??'',b:b[i][k]??''})})}return o}
+const chTxt=c=>c.k==='add'?'#'+c.i+' +':c.k==='del'?'#'+c.i+' −':'#'+c.i+' '+t(c.k==='p'?'price':c.k==='b'?'begin':'end')+': '+(c.a===''?'∅':c.a)+' → '+(c.b===''?'∅':c.b);
+function showWarn(rows,cap){
+ let el=$('#wn');if(!el){const a=$('#add');if(!a)return;el=document.createElement('p');el.id='wn';el.className='note';el.style.color='var(--bad)';a.closest('.acts').before(el)}
+ const w=[],ok=[],seen={},pc={};
+ rows.forEach((r,i)=>{if(blank(r.b)||blank(r.e))return;const k=calc(r,cap);if(k.flag)return;const pr=String(r.p).trim();ok.push({i,v:k.vol,p:pr});
+  const key=r.p+'|'+r.b+'|'+r.e;if(key in seen)w.push(t('wDup').replace('{a}',i+1).replace('{b}',seen[key]));else seen[key]=i+1;
+  if(k.vol===0)w.push(t('wZero').replace('{a}',i+1));pc[pr]=(pc[pr]||0)+1});
+ if(ok.length>=4){const s=ok.map(x=>x.v).sort((a,b)=>a-b),m=s[Math.floor(s.length/2)];if(m>0)ok.forEach(x=>{if(x.v>3*m)w.push(t('wHigh').replace('{a}',x.i+1))});
+  const top=Object.keys(pc).sort((a,b)=>pc[b]-pc[a])[0];if(pc[top]>=ok.length*0.6)ok.forEach(x=>{if(x.p!==top)w.push(t('wPrice').replace('{a}',x.i+1))})}
+ el.innerHTML=w.slice(0,6).map(x=>'⚠ '+esc(x)).join('<br>')}
+async function prevDay(date){const sn=await db.collection('t/'+ME.tid+'/days').where('u','==',uid).get();let best=null;sn.docs.forEach(d=>{const x=d.data();if(x.d<date&&(!best||x.d>best.d))best=x});if(!best)return null;try{return{d:best.d,...await dec(await myKey(),best.enc)}}catch(e){return null}}
+const nr=()=>({g:'',n:'',c:'',p:'',b:'',e:''});
+function home(){
+ let date=ymd(new Date()),rows=[],cap=50,cash={c:'',p:'',x:''},tm=null,ready=false,prev=[],last={};
+ $('#page').innerHTML=`<div class="card"><div class="row"><div><label>${t('date')}</label><input type="date" id="dt"></div><div><label>${t('cap')}</label><input id="cap" inputmode="decimal"></div>
+ <div class="kpi kr"><span>${t('rev')}</span><b id="kr">0</b></div><div class="kpi kv"><span>${t('vol')}</span><b id="kv">0</b></div></div>
+ <div class="wrap" style="margin-top:10px"><table><thead><tr><th>#</th><th>${t('game')}</th><th>${t('price')}</th><th>${t('begin')}</th><th>${t('end')}</th><th class="n">${t('rev')}</th><th class="n">${t('vol')}</th><th></th><th></th></tr></thead><tbody id="rs"></tbody></table></div>
+ <div class="acts"><button class="p" id="cpy">📋 ${t('copyY')}</button><button id="add">${t('add')}</button><button id="add10">${t('add10')}</button><span class="note" id="st"></span></div><p class="note">${t('rule')}</p></div>
+ <div class="card"><h3 class="sec" style="margin-top:0">${t('cashH')}</h3><div class="row"><div><label>${t('cCount')}</label><input id="cc1" inputmode="decimal"></div><div><label>${t('cPrize')}</label><input id="cc2" inputmode="decimal"></div><div><label>${t('cExch')}</label><input id="cc3" inputmode="decimal"></div></div>
+ <div class="row" style="margin-top:10px"><div class="kpi" style="background:var(--tot);color:var(--accent)"><span>${t('expct')}</span><b id="ce">0</b><small id="cs"></small></div><div class="kpi" id="cov"><span>${t('overS')}</span><b id="co">—</b></div></div></div>`;
+ $('#dt').value=date;
+ const path=()=>'t/'+ME.tid+'/days/'+uid+'_'+date,keep0=()=>rows.filter(r=>!(blank(r.b)&&blank(r.e))),cp=r=>({g:r.g||'',n:r.n||'',c:r.c||'',p:r.p??'',b:r.b??'',e:r.e??''});
+ const gopts=sel=>`<option value="">${t('cust')}</option>`+CAT.games.map(g=>`<option value="${esc(g.id)}"${g.id===sel?' selected':''}>${esc(g.name)} · ${g.price}</option>`).join('');
+ async function load(){ready=false;$('#st').textContent=t('loading');let p=null,pv=null;
+  try{const s=await db.doc(path()).get();if(s.exists)p=await dec(await myKey(),s.data().enc)}catch(e){}
+  try{pv=await prevDay(date)}catch(e){}
+  last={};if(pv)pv.rows.forEach(r=>{if(r.g)last[r.g]=blank(r.e)?r.b:r.e});
+  if(p){rows=p.rows.length?p.rows.map(cp):[nr()];cap=p.cap;cash=p.cash||{c:'',p:'',x:''}}
+  
+  else{rows=[nr()];cap=50;cash={c:'',p:'',x:''}}
+  $('#cap').value=cap;$('#cc1').value=cash.c;$('#cc2').value=cash.p;$('#cc3').value=cash.x;build();prev=keep0().map(r=>({p:r.p,b:r.b,e:r.e}));ready=true;
+  $('#st').textContent=p?t('loaded'):t('newDay')}
+ function build(){const tb=$('#rs');tb.innerHTML='';rows.forEach((r,i)=>{const tr=document.createElement('tr');
+  tr.innerHTML=`<td>${i+1}</td><td><select data-i="${i}" data-k="g">${gopts(r.g)}</select></td>`+['p','b','e'].map(k=>`<td><input data-i="${i}" data-k="${k}" inputmode="decimal" value="${esc(r[k])}"></td>`).join('')+`<td class="n"></td><td class="n"></td><td class="flag"></td><td><button class="x" data-d="${i}">✕</button></td>`;tb.appendChild(tr)});
+  const tr=document.createElement('tr');tr.className='t';tr.innerHTML=`<td></td><td colspan="4">${t('total')}</td><td class="n" id="tr"></td><td class="n" id="tv"></td><td></td><td></td>`;tb.appendChild(tr);upd()}
+ function upd(){let c0=num($('#cap').value);if(!(c0>0))c0=50;cap=c0;let R=0,V=0;const trs=$('#rs').querySelectorAll('tr:not(.t)');
+  rows.forEach((r,i)=>{const x=calc(r,c0),tr=trs[i],ins=tr.querySelectorAll('input'),td=tr.querySelectorAll('td');R+=x.rev;V+=x.vol;
+   ins[0].classList.toggle('bad',x.pb);ins[1].classList.toggle('bad',x.bb);ins[2].classList.toggle('bad',x.eb);td[5].textContent=fmt(x.rev);td[6].textContent=fmt(x.vol);td[7].textContent=x.flag==='size'?t('needSize'):(x.bb||x.eb)?t('range').replace('{n}',num(r.c)>0?num(r.c):c0):x.flag});
+  $('#tr').textContent=$('#kr').textContent=fmt(R);$('#tv').textContent=$('#kv').textContent=fmt(V);showWarn(rows,c0);
+  const pz=num(cash.p)||0,xc=num(cash.x)||0,k=num(cash.c),ex=R-pz-xc;$('#ce').textContent=fmt(ex);$('#cs').textContent=t('sales')+' '+fmt(R);
+  if(blank(cash.c)||isNaN(k)){$('#co').textContent='—';$('#cov').className='kpi'}else{const o=k-ex;$('#co').textContent=(o>0?'+':'')+fmt(o);$('#cov').className='kpi '+(Math.abs(o)>(CAT.tol??5)?'kv':'kr')}}
+ async function doSave(){clearTimeout(tm);window.__flush=null;const keep=keep0();
+  try{if(ME.role!=='owner'){const a=await db.doc('access/'+ME.h).get();if(!a.exists){gate(t('removed'));return}}
+   const ch=diffRows(prev,keep),k=await myKey();
+   await db.doc(path()).set({u:uid,d:date,l:LABEL(),enc:await enc(k,{cap,rows:keep,cash})});
+   if(ch.length)await db.doc('t/'+ME.tid+'/audit/'+Date.now()+'-'+Math.random().toString(36).slice(2,6)).set({u:uid,d:date,l:LABEL(),ts:Date.now(),enc:await enc(k,{by:ME.email||'',ch})});
+   prev=keep.map(r=>({p:r.p,b:r.b,e:r.e}));$('#st').textContent=t('saved')}catch(e){$('#st').textContent=t('notSaved')+(e.message||e.code)}}
+ function changed(){upd();if(!ready)return;$('#st').textContent=t('saving');clearTimeout(tm);window.__flush=doSave;tm=setTimeout(doSave,700)}
+ async function copyPrev(){
+  let pv=null;try{pv=await prevDay(date)}catch(e){}
+  if(!pv||!pv.rows.length){$('#st').textContent=t('noPrev');return}
+  const key=r=>(r.g||'c'+r.p)+'|'+String(r.b).trim(),have=new Set(rows.filter(r=>!blank(r.b)).map(key));
+  const nrw=pv.rows.map(r=>({...cp(r),b:blank(r.e)?String(r.b??''):String(r.e),e:''})).filter(r=>!have.has(key(r)));
+  if(!nrw.length){$('#st').textContent=t('already');return}
+  const empty=rows.every(r=>blank(r.b)&&blank(r.e));rows=empty?nrw:rows.concat(nrw);build();changed();$('#st').textContent=t('copiedFrom')+' '+pv.d}
+ $('#cpy').onclick=copyPrev;
+ $('#rs').oninput=e=>{const d=e.target.dataset;if(d.k&&d.k!=='g'){rows[d.i][d.k]=e.target.value;changed()}};
+ $('#rs').onchange=e=>{const d=e.target.dataset;if(d.k==='g'){const r=rows[d.i],g=CAT.games.find(x=>x.id===e.target.value);r.g=e.target.value;if(g){r.n=g.name;r.c=g.size;r.p=String(g.price);if(blank(r.b)&&last[g.id]!==undefined)r.b=String(last[g.id])}else{r.n='';r.c=''}build();changed()}};
+ $('#rs').onclick=e=>{const d=e.target.dataset.d;if(d!==undefined){rows.splice(d,1);if(!rows.length)rows.push(nr());build();changed()}};
+ [['cc1','c'],['cc2','p'],['cc3','x']].forEach(([i,k])=>$('#'+i).oninput=e=>{cash[k]=e.target.value;changed()});
+ $('#cap').oninput=changed;$('#add').onclick=()=>{rows.push(nr());build()};$('#add10').onclick=()=>{for(let i=0;i<10;i++)rows.push(nr());build()};
+ $('#dt').onchange=async e=>{if(!e.target.value)return;if(window.__flush)await window.__flush();date=e.target.value;load()};
+ load();
+}
+/* ---------- games ---------- */
+function gamesView(){
+ $('#page').innerHTML=`<div class="card"><h3 class="sec" style="margin-top:0">${t('gamesN')}</h3><div class="row"><div><label>${t('gName')}</label><input id="gn"></div><div><label>${t('price')}</label><input id="gp" inputmode="decimal"></div><div><label>${t('pSize')} (${t('opt')})</label><input id="gs" inputmode="numeric"></div></div><p class="note">${t('sizeHint')}</p><div class="acts"><button class="p" id="ga">${t('addG')}</button><span class="note" id="gx"></span></div><div id="gl" style="margin-top:10px"></div></div>
+ <div class="card"><label>${t('tolL')}</label><input id="gt" inputmode="decimal" style="max-width:140px"></div>`;
+ $('#gt').value=CAT.tol??5;
+ const list=()=>{$('#gl').innerHTML=CAT.games.map(g=>`<div class="ppl"><span>${esc(g.name)} · <b>${g.price}</b> · ${g.size||'—'}</span><button class="rv" data-x="${esc(g.id)}">${t('delG')}</button></div>`).join('')};
+ const save=async()=>{try{await db.doc('t/'+ME.tid+'/catalog/main').set({enc:await enc(await catKey(),CAT)});$('#gx').textContent=t('saved')}catch(e){$('#gx').textContent=e.message||e.code}};
+ $('#ga').onclick=()=>{const n=$('#gn').value.trim(),p=num($('#gp').value),z=blank($('#gs').value)?0:Math.floor(num($('#gs').value));if(!n||!(p>=0)||isNaN(z)||z<0){$('#gx').textContent=t('gErr');return}
+  CAT.games.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),name:n,price:p,size:z});$('#gn').value=$('#gp').value=$('#gs').value='';list();save()};
+ $('#gl').onclick=e=>{const x=e.target.dataset.x;if(x){CAT.games=CAT.games.filter(g=>g.id!==x);list();save()}};
+ $('#gt').onchange=()=>{const v=num($('#gt').value);CAT.tol=isNaN(v)?5:v;save()};
+ list();
+}
+/* ---------- reconciliation helpers ---------- */
+const reconRows=days=>days.map(d=>{const s=d.rows.reduce((a,r)=>a+calc(r,d.cap||50).rev,0),c=d.cash||{},p=num(c.p)||0,x=num(c.x)||0,k=num(c.c),ex=s-p-x;return{date:d.date,worker:d.worker,sales:s,p,x,ex,k:blank(c.c)||isNaN(k)?null:k,ov:blank(c.c)||isNaN(k)?null:k-ex}}).sort((a,b)=>a.date.localeCompare(b.date)||a.worker.localeCompare(b.worker));
+const reconHead=en=>en?{date:'Date',worker:'Worker',sales:'Ticket sales',p:'Prizes paid',x:'Exchanges',ex:'Expected cash',k:'Cash counted',ov:'Over/short'}:{date:t('date'),worker:t('worker'),sales:t('sales'),p:t('cPrize'),x:t('cExch'),ex:t('expct'),k:t('cCount'),ov:t('overS')};
+async function doExportRecon(){
+ const st=$('#xs'),fm=$('#xm').value,rg=getRange('x');if(!rg){st.textContent=t('pick');return}
+ const[f,tt]=rg,sel=TO()?$('#xw').value:'',all=TO()&&!sel;st.textContent=t('loading');
+ try{const rr=reconRows(await loadDays(f,tt,sel));if(!rr.length){st.textContent=t('none');return}
+  const cols=['date'].concat(all?['worker']:[],['sales','p','x','ex','k','ov']),H=reconHead(fm==='pdf'),head=cols.map(c=>H[c]),body=rr.map(r=>cols.map(c=>r[c]??''));
+  const base='reconciliation_'+f+'_to_'+tt,dl=await claude.use('downloads');if(!dl){st.textContent=t('noDl');return}
+  if(fm==='csv'){const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';await dl.save({filename:base+'.csv',data:new Blob(['\ufeff'+[head].concat(body).map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'})})}
+  else if(fm==='xlsx'){if(!window.XLSX){st.textContent=t('lib');return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([head].concat(body)),'Reconciliation');await dl.save({filename:base+'.xlsx',data:new Uint8Array(XLSX.write(wb,{bookType:'xlsx',type:'array'}))})}
+  else{if(!window.jspdf||!window.jspdf.jsPDF){st.textContent=t('lib');return}const doc=new window.jspdf.jsPDF();doc.setFontSize(13);doc.text('Daily reconciliation  '+f+' - '+tt,14,15);
+   doc.autoTable({head:[head],body:body.map(r=>r.map(v=>typeof v==='number'?fmt(v):v)),startY:20,styles:{fontSize:8},headStyles:{fillColor:[109,40,217]},alternateRowStyles:{fillColor:[245,243,255]}});
+   await dl.save({filename:base+'.pdf',data:new Uint8Array(doc.output('arraybuffer'))})}
+  st.textContent=t('done')}catch(e){st.textContent=e.code==='declined'?t('cancel'):t('fail')+(e.message||e.code)}
+}
+/* ---------- records ---------- */
+function rangeFor(p){const n=new Date(),d=new Date(n.getFullYear(),n.getMonth(),n.getDate());
+ if(p==='today')return[ymd(d),ymd(d)];
+ if(p==='yest'){d.setDate(d.getDate()-1);return[ymd(d),ymd(d)]}
+ if(p==='week'){const s=new Date(d);s.setDate(d.getDate()-((d.getDay()+6)%7)-7);const e=new Date(s);e.setDate(s.getDate()+6);return[ymd(s),ymd(e)]}
+ return[ymd(new Date(d.getFullYear(),d.getMonth()-1,1)),ymd(new Date(d.getFullYear(),d.getMonth(),0))]}
+const periodOpts=()=>['today','yest','week','month','custom'].map(v=>`<option value="${v}">${t(v)}</option>`).join('');
+async function workerOpts(){const nm=await nameMap();return `<option value="">${t('all')}</option>`+Object.entries(nm).map(([l,n])=>`<option value="${esc(l)}">${esc(n)}</option>`).join('')}
+function getRange(pre){const p=$('#'+pre+'r').value;$('#'+pre+'c').hidden=p!=='custom';if(p==='custom'){const f=$('#'+pre+'f').value,tt=$('#'+pre+'t').value;return(!f||!tt||f>tt)?null:[f,tt]}return rangeFor(p)}
+function records(){
+ $('#page').innerHTML=`<div class="card"><div class="row">${TO()?`<div><label>${t('worker')}</label><select id="rw"></select></div>`:''}<div><label>${t('period')}</label><select id="rr">${periodOpts()}</select></div></div>
+ <div id="rc" hidden><div class="row"><div><label>${t('start')}</label><input type="date" id="rf"></div><div><label>${t('endd')}</label><input type="date" id="rt"></div></div></div>
+ <div class="row" style="margin-top:6px"><div><label>${t('search')}</label><input id="rq"></div><div><label>${t('minVol')}</label><input id="rm" inputmode="decimal"></div><div style="flex:0 0 auto"><label><input type="checkbox" id="rg" style="width:auto"> ${t('flagged')}</label></div></div>
+ <div class="row" style="margin-top:12px"><div class="kpi kr"><span>${t('rev')}</span><b id="rk1">0</b><small id="rd1"></small></div><div class="kpi kv"><span>${t('vol')}</span><b id="rk2">0</b><small id="rd2"></small></div><div class="kpi" style="background:var(--tot);color:var(--accent)"><span>${t('rowsN')}</span><b id="rk3">0</b></div></div>
+ <h3 class="sec">${t('daily')}</h3><div class="bars" id="rbars"></div><p class="note" id="rax"></p><div id="rtop"></div>
+ <div class="wrap" style="margin-top:10px"><table><thead id="rh"></thead><tbody id="rb"></tbody></table></div><p class="note" id="rn"></p>
+ <h3 class="sec">${t('recon')}</h3><div class="wrap"><table><thead id="rrh"></thead><tbody id="rrb"></tbody></table></div>
+ <details id="au" style="margin-top:10px"><summary>${t('hist')}</summary><div id="al" class="note"></div></details></div>`;
+ const dd=x=>{const[y,m,d]=x.split('-').map(Number);return new Date(y,m-1,d)};
+ const prevR=(f,tt)=>{const a=dd(f),n=Math.round((dd(tt)-a)/864e5)+1,pe=new Date(a),ps=new Date(a);pe.setDate(a.getDate()-1);ps.setDate(a.getDate()-n);return[ymd(ps),ymd(pe)]};
+ const dTxt=(c,p)=>p?((c>=p?'▲ ':'▼ ')+Math.abs((c-p)/p*100).toFixed(1)+'% '+t('vsPrev')):'';
+ const flat=a=>{const o=[];a.forEach(d=>d.rows.forEach(r=>{const k=calc(r,d.cap||50);o.push({date:d.date,worker:d.worker,n:r.n||'',p:r.p,b:r.b,e:r.e,rev:k.rev,vol:k.vol,fl:k.flag})}));return o};
+ async function hist(f,tt,sel){const col=db.collection('t/'+ME.tid+'/audit'),s=TO()?await col.get():await col.where('u','==',uid).get(),nm=await nameMap(),items=[];
+  for(const d of s.docs){const x=d.data();if(x.d<f||x.d>tt||(sel&&x.l!==sel))continue;try{const p=await dec(TO()?await derive(KT(),x.l):await myKey(),x.enc);items.push({d:x.d,ts:x.ts,by:p.by||nm[x.l]||'',ch:p.ch||[]})}catch(e){}}
+  items.sort((a,b)=>b.ts-a.ts);$('#al').innerHTML=items.slice(0,60).map(x=>`<div style="margin:6px 0;border-top:1px solid var(--line);padding-top:6px"><b>${esc(x.d)}</b> · ${esc(x.by)} · ${esc(new Date(x.ts).toLocaleString())}<br>${x.ch.map(c=>esc(chTxt(c))).join(' · ')}</div>`).join('')||t('noHist')}
+ let tok=0;
+ async function show(){
+  const my=++tok,rg=getRange('r');if(!rg){$('#rn').textContent=t('pick');return}const[f,tt]=rg,sel=TO()?$('#rw').value:'',all=TO()&&!sel;$('#rn').textContent=t('loading');
+  try{
+   const[pf,pt]=prevR(f,tt),[a0,b0]=await Promise.all([loadDays(f,tt,sel),loadDays(pf,pt,sel)]);if(my!==tok)return;
+   const q=$('#rq').value.trim().toLowerCase(),mv=num($('#rm').value),fg=$('#rg').checked;
+   const filt=r=>(!q||[r.date,r.worker,r.p,r.b,r.e].join(' ').toLowerCase().includes(q))&&(isNaN(mv)||r.vol>=mv)&&(!fg||r.fl);
+   const out=flat(a0).filter(filt).sort((a,b)=>a.date.localeCompare(b.date)||a.worker.localeCompare(b.worker)),pre=flat(b0).filter(filt);
+   const sm=(a,k)=>a.reduce((s,r)=>s+r[k],0),R=sm(out,'rev'),V=sm(out,'vol');
+   const cols=['date'].concat(all?['worker']:[],['n','p','b','e','rev','vol']),H={date:t('date'),worker:t('worker'),n:t('game'),p:t('price'),b:t('begin'),e:t('end'),rev:t('rev'),vol:t('vol')};
+   $('#rh').innerHTML='<tr>'+cols.map(c=>`<th class="${c==='rev'||c==='vol'?'n':''}">${H[c]}</th>`).join('')+'</tr>';
+   $('#rb').innerHTML=out.map(r=>'<tr>'+cols.map(c=>c==='rev'||c==='vol'?`<td class="n">${fmt(r[c])}</td>`:`<td>${esc(r[c])}</td>`).join('')+'</tr>').join('')||`<tr><td colspan="${cols.length}" class="note">${t('none')}</td></tr>`;
+   $('#rk1').textContent=fmt(R);$('#rk2').textContent=fmt(V);$('#rk3').textContent=out.length;$('#rd1').textContent=dTxt(R,sm(pre,'rev'));$('#rd2').textContent=dTxt(V,sm(pre,'vol'));
+   const span=Math.round((dd(tt)-dd(f))/864e5)+1,g=span>62?(d=>d.slice(0,7)):(d=>d),by={};out.forEach(r=>{by[g(r.date)]=(by[g(r.date)]||0)+r.rev});
+   const ks=Object.keys(by).sort(),mx=Math.max(1,...ks.map(k=>by[k]));
+   $('#rbars').innerHTML=ks.map(k=>`<i title="${k}: ${fmt(by[k])}" style="height:${Math.max(3,by[k]/mx*100)}%"></i>`).join('');$('#rax').textContent=ks.length?ks[0]+(ks.length>1?' → '+ks[ks.length-1]:''):'';
+   if(all){const bw={};out.forEach(r=>{bw[r.worker]=(bw[r.worker]||0)+r.rev});const tp=Object.entries(bw).sort((a,b)=>b[1]-a[1]).slice(0,5),m2=Math.max(1,...tp.map(x=>x[1]));
+    $('#rtop').innerHTML=tp.length?`<h3 class="sec">${t('top')}</h3>`+tp.map(x=>`<div class="tw"><span>${esc(x[0])}</span><div style="flex:1"><i style="width:${x[1]/m2*100}%"></i></div><b>${fmt(x[1])}</b></div>`).join(''):''}else $('#rtop').innerHTML='';
+   $('#rn').textContent=f+' → '+tt;
+   const rr=reconRows(a0),cR=['date'].concat(all?['worker']:[],['sales','p','x','ex','k','ov']),RHd=reconHead();
+   $('#rrh').innerHTML='<tr>'+cR.map(c=>`<th class="${c==='date'||c==='worker'?'':'n'}">${RHd[c]}</th>`).join('')+'</tr>';
+   $('#rrb').innerHTML=rr.map(r=>'<tr>'+cR.map(c=>c==='date'||c==='worker'?`<td>${esc(r[c])}</td>`:`<td class="n"${c==='ov'&&r.ov!=null&&Math.abs(r.ov)>(CAT.tol??5)?' style="color:var(--bad);font-weight:700"':''}>${r[c]==null?'—':fmt(r[c])}</td>`).join('')+'</tr>').join('')||`<tr><td colspan="${cR.length}" class="note">${t('none')}</td></tr>`;
+   await hist(f,tt,sel);
+  }catch(e){$('#rn').textContent=e.message||e.code}
+ }
+ (async()=>{if(TO())$('#rw').innerHTML=await workerOpts();['rr','rf','rt','rg'].concat(TO()?['rw']:[]).forEach(i=>$('#'+i).onchange=show);['rq','rm'].forEach(i=>$('#'+i).oninput=show);show()})();
+}
+/* ---------- export ---------- */
+async function exportView(){
+ $('#page').innerHTML=`<div class="card">${TO()?`<label>${t('worker')}</label><select id="xw"></select>`:''}<label>${t('period')}</label><select id="xr">${periodOpts()}</select>
+ <div id="xc" hidden><div class="row"><div><label>${t('start')}</label><input type="date" id="xf"></div><div><label>${t('endd')}</label><input type="date" id="xt"></div></div></div>
+ <label>${t('format')}</label><select id="xm"><option value="xlsx">Excel (.xlsx)</option><option value="pdf">PDF</option><option value="csv">CSV</option></select>
+ <div class="acts"><button class="p" id="xg">${t('exp')}</button><button id="xg2">${t('exportR')}</button></div><p class="note" id="xs"></p></div>`;
+ if(TO())$('#xw').innerHTML=await workerOpts();$('#xr').onchange=()=>getRange('x');$('#xg').onclick=doExport;$('#xg2').onclick=doExportRecon;
+}
+async function doExport(){
+ const st=$('#xs'),fm=$('#xm').value,rg=getRange('x');if(!rg){st.textContent=t('pick');return}
+ const[f,tt]=rg,sel=TO()?$('#xw').value:'',all=TO()&&!sel;st.textContent=t('loading');
+ try{
+  const days=await loadDays(f,tt,sel),out=[];days.forEach(d=>d.rows.forEach(r=>{const k=calc(r,d.cap||50);out.push({date:d.date,worker:d.worker,n:r.n||'',p:r.p,b:r.b,e:r.e,rev:k.rev,vol:k.vol})}));
+  if(!out.length){st.textContent=t('none');return}
+  out.sort((a,b)=>a.date.localeCompare(b.date)||a.worker.localeCompare(b.worker));
+  const pdf=fm==='pdf',H=pdf?{date:'Date',worker:'Worker',n:'Game',p:'Price',b:'Begin',e:'End',rev:'Revenue',vol:'Volume'}:{date:t('date'),worker:t('worker'),n:t('game'),p:t('price'),b:t('begin'),e:t('end'),rev:t('rev'),vol:t('vol')};
+  const cols=['date'].concat(all?['worker']:[],['n','p','b','e','rev','vol']),nv=v=>blank(v)?'':(isNaN(num(v))?v:num(v));
+  const head=cols.map(c=>H[c]),body=out.map(r=>cols.map(c=>['p','b','e'].includes(c)?nv(r[c]):r[c]));
+  const base='readings_'+f+'_to_'+tt,dl=await claude.use('downloads');if(!dl){st.textContent=t('noDl');return}
+  if(fm==='csv'){const q=v=>'"'+String(v??'').replace(/"/g,'""')+'"';await dl.save({filename:base+'.csv',data:new Blob(['\ufeff'+[head].concat(body).map(r=>r.map(q).join(',')).join('\n')],{type:'text/csv'})})}
+  else if(fm==='xlsx'){if(!window.XLSX){st.textContent=t('lib');return}const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([head].concat(body)),'Readings');await dl.save({filename:base+'.xlsx',data:new Uint8Array(XLSX.write(wb,{bookType:'xlsx',type:'array'}))})}
+  else{if(!window.jspdf||!window.jspdf.jsPDF){st.textContent=t('lib');return}const doc=new window.jspdf.jsPDF();doc.setFontSize(13);doc.text('Meter Readings  '+f+' - '+tt,14,15);
+   doc.autoTable({head:[head],body:body.map(r=>r.map(v=>typeof v==='number'?fmt(v):v)),startY:20,styles:{fontSize:9},headStyles:{fillColor:[109,40,217]},alternateRowStyles:{fillColor:[245,243,255]}});
+   await dl.save({filename:base+'.pdf',data:new Uint8Array(doc.output('arraybuffer'))})}
+  st.textContent=t('done');
+ }catch(e){st.textContent=e.code==='declined'?t('cancel'):t('fail')+(e.message||e.code)}
+}
+/* ---------- access (workers / businesses) ---------- */
+function accessView(kind){
+ const biz=kind==='business';
+ $('#page').innerHTML=`<div class="card"><h3 class="sec" style="margin-top:0">${biz?t('bizH'):t('access')}</h3>${biz?`<p class="note">${t('bizNote')}</p>`:''}<label>${t('pemail')}</label><input type="email" id="ae" placeholder="name@example.com"><div class="acts"><button class="p" id="ag">${t('share')}</button></div><p class="note" id="as"></p><div id="inv"></div></div><div class="card"><h3 class="sec" style="margin-top:0">${t('people')}</h3><div id="pl"></div></div>`;
+ async function list(){const l=(await people()).filter(p=>p.kind===kind);
+  $('#pl').innerHTML=l.map(p=>`<div class="ppl"><span>${esc(p.email)}<br><code>${esc(p.code)}</code></span><button class="rv" data-r="${p.id}" data-h="${p.h}">${t('revoke')}</button></div>`).join('')}
+ $('#ag').onclick=async()=>{
+  const em=$('#ae').value.trim().toLowerCase(),st=$('#as');if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){st.textContent=t('valid');return}
+  try{const al='ABCDEFGHJKLMNPQRSTUVWXYZ23456789',code=[...crypto.getRandomValues(new Uint8Array(10))].map(x=>al[x%al.length]).join(''),wid=db.collection('t/'+ME.tid+'/people').doc().id,h=await accH(em,code),kt=KT();
+   if(biz)await db.doc('access/'+h).set({role:'business',tid:ME.tid,wid});
+   else{const kw=await derive(kt,'w:'+wid),kc=await derive(kt,'catalog');await db.doc('access/'+h).set({role:'worker',tid:ME.tid,wid,wrap:await enc(await kdf(code,em),{k:b64(kw),c:b64(kc)})})}
+   await db.doc('t/'+ME.tid+'/people/'+wid).set({enc:await enc(await derive(kt,'people'),{email:em,code,h,kind,price:''})});NAMES=null;
+   st.textContent=t('shared')+em;$('#ae').value='';list();
+   const body=t('mail').replace('{l}',PAGE).replace('{e}',em).replace('{c}',code)+(LANG==='en'?'':'\n\n'+T.en.mail.replace('{l}',PAGE).replace('{e}',em).replace('{c}',code));
+   $('#inv').innerHTML=`<p style="margin:10px 0 0">${t('code')}: <code style="font-size:16px">${code}</code> <button type="button" id="cc">${t('copyCode')}</button></p><p class="note">${t('nosend')}</p><div class="acts"><a href="mailto:${encodeURIComponent(em)}?subject=${encodeURIComponent(t('subj'))}&body=${encodeURIComponent(body)}" target="_blank" rel="noopener"><button type="button" class="p">${t('draft')}</button></a><button type="button" id="cp">${t('copyMsg')}</button></div>`;
+   const cp=(txt,b)=>{const d=()=>{b.textContent=t('copied')};try{navigator.clipboard.writeText(txt).then(d,()=>{})}catch(_){}};$('#cc').onclick=()=>cp(code,$('#cc'));$('#cp').onclick=()=>cp(body,$('#cp'));
+  }catch(e){st.textContent=e.message||e.code}};
+ $('#pl').onclick=async e=>{const id=e.target.dataset.r;if(!id)return;const bt=e.target;
+  if(bt.dataset.c!=='1'){bt.dataset.c='1';bt.textContent=t('sure');setTimeout(()=>{bt.dataset.c='';bt.textContent=t('revoke')},4000);return}
+  try{const h=bt.dataset.h;for(const p of ['access/'+h,'claims/'+h,'t/'+ME.tid+'/prices/'+id])await db.doc(p).delete().catch(()=>{});await db.doc('t/'+ME.tid+'/people/'+id).delete();NAMES=null;$('#as').textContent=t('revoked')}catch(er){$('#as').textContent=er.message||er.code}list()};
+ $('#pl').onchange=async e=>{const id=e.target.dataset.p;if(!id)return;const kt=KT(),pk=await derive(kt,'people'),d=await db.doc('t/'+ME.tid+'/people/'+id).get();if(!d.exists)return;
+  const p=await dec(pk,d.data().enc),v=e.target.value.trim()===''?'':num(e.target.value);p.price=v;await db.doc('t/'+ME.tid+'/people/'+id).set({enc:await enc(pk,p)});
+  await db.doc('t/'+ME.tid+'/prices/'+id).set({enc:await enc(await derive(kt,'w:'+id),{price:v===''?null:v})})};
+ list();
+}
+boot();
+</script></body></html>
