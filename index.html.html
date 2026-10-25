@@ -240,9 +240,9 @@ function home(){
   let pv=null;try{pv=src?await dayAt(src):await prevDay(date)}catch(e){}
   if(!pv||!pv.rows.length){$('#st').textContent=src?t('noDay')+' '+src:t('noPrev');return}
   const key=r=>'c'+r.p+'|'+String(r.b).trim(),have=new Set(rows.filter(r=>!blank(r.b)).map(key));
-  const nrw=pv.rows.map(r=>({...cp(r),g:'',n:GAME,c:'',b:blank(r.e)?String(r.b??''):String(r.e),e:''})).filter(r=>!have.has(key(r)));
+  const nrw=pv.rows.map(r=>({...cp(r),g:'',n:GAME,c:'',b:blank(r.e)?String(r.b??''):String(r.e),e:''})).filter(r=>src||!have.has(key(r)));
   if(!nrw.length){$('#st').textContent=t('already');return}
-  const empty=rows.every(r=>blank(r.b)&&blank(r.e));rows=empty?nrw:rows.concat(nrw);build();changed();$('#st').textContent=t('copiedFrom')+' '+pv.d}
+  const empty=src||rows.every(r=>blank(r.b)&&blank(r.e));rows=empty?nrw:rows.concat(nrw);build();changed();$('#st').textContent=t('copiedFrom')+' '+pv.d}
  $('#cpy').onclick=()=>copyPrev();
  const cpdt=$('#cpdt');$('#cpd').onclick=()=>{cpdt.max=date;cpdt.value='';try{cpdt.showPicker()}catch(e){cpdt.style.cssText='width:auto;margin-top:6px';cpdt.focus()}};
  cpdt.onchange=()=>{const v=cpdt.value;if(!v)return;if(v===date){$('#st').textContent=t('noDay')+' '+v;return}copyPrev(v)};
